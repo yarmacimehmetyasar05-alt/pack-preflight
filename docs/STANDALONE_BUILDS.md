@@ -4,7 +4,7 @@ The normal developer installation uses Python. For print and prepress beta teste
 
 ## Download a public beta
 
-Open the repository's **Releases** page and choose the latest prerelease. The current public beta is tagged `v0.1.0-beta.3`.
+Open the repository's **Releases** page and choose the latest prerelease. The current public beta is tagged `v0.1.0-beta.4`.
 
 Each release contains platform-named ZIP archives for macOS, Windows, and Linux.
 
@@ -14,7 +14,7 @@ After unzipping, confirm the exact build before testing:
 pack-preflight --version
 ```
 
-On Windows use `pack-preflight.exe --version`. Beta 3 should report `0.1.0b3`.
+On Windows use `pack-preflight.exe --version`. Beta 4 should report `0.1.0b4`.
 
 ## Maintainer build workflow
 
