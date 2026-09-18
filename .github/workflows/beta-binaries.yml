@@ -45,7 +45,9 @@ jobs:
         run: pyinstaller --clean --onefile --name pack-preflight --paths src pack_preflight_entry.py
 
       - name: Smoke-test executable
-        run: python -c "import subprocess; subprocess.run([r'${{ matrix.binary }}', '--help'], check=True)"
+        run: |
+          python -c "import subprocess; subprocess.run([r'${{ matrix.binary }}', '--help'], check=True)"
+          python -c "import subprocess; subprocess.run([r'${{ matrix.binary }}', '--version'], check=True)"
 
       - name: Package beta executable
         run: python -c "import pathlib, zipfile; p=pathlib.Path(r'${{ matrix.binary }}'); z=pathlib.Path('dist/pack-preflight-${{ matrix.label }}.zip'); f=zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED); f.write(p, arcname=p.name); f.close()"
@@ -64,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: v0.1.0-beta.2
+      TAG: v0.1.0-beta.3
 
     steps:
       - uses: actions/checkout@v5
@@ -86,6 +88,6 @@ jobs:
 
           gh release create "$TAG" release-assets/*.zip \
             --target "$GITHUB_SHA" \
-            --title "pack-preflight v0.1.0 beta 2" \
+            --title "pack-preflight v0.1.0 beta 3" \
             --prerelease \
-            --notes-file docs/releases/v0.1.0-beta.2.md
+            --notes-file docs/releases/v0.1.0-beta.3.md
