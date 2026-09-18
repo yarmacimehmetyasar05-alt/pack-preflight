@@ -1,8 +1,16 @@
 # Standalone beta builds
 
-The normal developer installation uses Python. For print and prepress beta testers who do not want to install Python packages, maintainers can create standalone executables with GitHub Actions.
+The normal developer installation uses Python. For print and prepress beta testers who do not want to install Python packages, the project also publishes standalone beta archives.
 
-## Create a beta build
+## Download a public beta
+
+Open the repository's **Releases** page and choose the latest prerelease. The first public beta is tagged `v0.1.0-beta.1`.
+
+Each release contains platform-named ZIP archives for macOS, Windows, and Linux.
+
+## Maintainer build workflow
+
+Maintainers can also create fresh workflow artifacts:
 
 1. Open the repository's **Actions** tab.
 2. Select **beta-binaries**.
