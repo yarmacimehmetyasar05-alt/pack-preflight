@@ -1,0 +1,68 @@
+name: Beta feedback
+description: Share a real-world comparison from a print, prepress, or packaging workflow.
+title: "[Beta feedback] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing pack-preflight. Please do not upload confidential customer artwork unless you have permission. A minimal synthetic reproduction is preferred.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system and pack-preflight beta version.
+      placeholder: "Windows 11, v0.1.0-beta.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: comparison
+    attributes:
+      label: Comparison workflow
+      description: What did you compare pack-preflight against?
+      options:
+        - Acrobat Preflight
+        - Enfocus PitStop
+        - RIP or automated workflow
+        - Experienced manual inspection
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: test_case
+    attributes:
+      label: Test case
+      description: Describe the PDF property or production situation you tested without exposing confidential content.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What result did your trusted workflow or experience indicate?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: pack-preflight result
+      description: What did pack-preflight report?
+    validations:
+      required: true
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome
+      options:
+        - Agreement
+        - False positive
+        - Missed risk
+        - Crash or unreadable output
+        - Other disagreement
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction details
+      description: Add command output, JSON, or a synthetic reproduction if possible. Do not attach confidential artwork without permission.
