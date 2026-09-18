@@ -9,6 +9,8 @@ The goal is to catch common production risks before a PDF reaches print or packa
 ## Current checks
 
 - Minimum bleed around the TrimBox
+- Missing explicit TrimBox or BleedBox
+- TrimBox dimensions per page
 - Inconsistent page sizes
 - Fonts that do not appear to be embedded
 - RGB color spaces in page resources
