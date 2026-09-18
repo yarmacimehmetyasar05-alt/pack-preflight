@@ -31,6 +31,52 @@ def _box_mm(box: Any) -> tuple[float, float, float, float]:
     return tuple(vals)  # type: ignore[return-value]
 
 
+def _as_text(value: Any) -> str | None:
+    value = _resolve(value)
+    if value is None:
+        return None
+    text = str(value)
+    return text if text else None
+
+
+def _read_pdfx_metadata(reader: PdfReader) -> dict[str, str | None]:
+    info = _resolve(reader.trailer.get("/Info"))
+    if not isinstance(info, DictionaryObject):
+        return {"version": None, "conformance": None}
+    return {
+        "version": _as_text(info.get("/GTS_PDFXVersion")),
+        "conformance": _as_text(info.get("/GTS_PDFXConformance")),
+    }
+
+
+def _read_output_intents(reader: PdfReader) -> list[dict[str, Any]]:
+    root = _resolve(reader.trailer.get("/Root"))
+    if not isinstance(root, DictionaryObject):
+        return []
+
+    raw_intents = _resolve(root.get("/OutputIntents"))
+    if not isinstance(raw_intents, ArrayObject):
+        return []
+
+    intents: list[dict[str, Any]] = []
+    for raw in raw_intents:
+        intent = _resolve(raw)
+        if not isinstance(intent, DictionaryObject):
+            continue
+        intents.append(
+            {
+                "subtype": _as_text(intent.get("/S")),
+                "output_condition_identifier": _as_text(
+                    intent.get("/OutputConditionIdentifier")
+                ),
+                "registry_name": _as_text(intent.get("/RegistryName")),
+                "info": _as_text(intent.get("/Info")),
+                "has_destination_profile": "/DestOutputProfile" in intent,
+            }
+        )
+    return intents
+
+
 def _resource_has_rgb(obj: Any, seen: set[int]) -> bool:
     obj = _resolve(obj)
     identity = id(obj)
@@ -122,6 +168,8 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
             "ok": False,
             "page_count": 0,
             "pages": [],
+            "pdfx": {"version": None, "conformance": None},
+            "output_intents": [],
             "spot_colors": [],
             "findings": [
                 Finding("pdf_unreadable", "error", f"Cannot read PDF: {exc}").to_dict()
@@ -139,6 +187,8 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
                 "ok": False,
                 "page_count": len(reader.pages),
                 "pages": [],
+                "pdfx": {"version": None, "conformance": None},
+                "output_intents": [],
                 "spot_colors": [],
                 "findings": [
                     Finding(
@@ -148,6 +198,18 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
                     ).to_dict()
                 ],
             }
+
+    pdfx = _read_pdfx_metadata(reader)
+    output_intents = _read_output_intents(reader)
+
+    if not output_intents:
+        findings.append(
+            Finding(
+                "output_intent_missing",
+                "info",
+                "No catalog OutputIntent entry was found. This tool does not treat that alone as a conformance failure.",
+            )
+        )
 
     trim_sizes: list[tuple[float, float]] = []
 
@@ -256,6 +318,8 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
         "ok": not has_errors,
         "page_count": len(reader.pages),
         "pages": page_summaries,
+        "pdfx": pdfx,
+        "output_intents": output_intents,
         "spot_colors": sorted(spot_colors),
         "findings": [f.to_dict() for f in findings],
     }
