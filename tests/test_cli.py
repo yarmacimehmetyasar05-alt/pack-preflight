@@ -26,6 +26,14 @@ def _report(path: str, ok: bool = True) -> dict:
     }
 
 
+def test_version_flag_reports_beta_version(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        cli.run(["--version"])
+
+    assert exc_info.value.code == 0
+    assert capsys.readouterr().out.strip() == "pack-preflight 0.1.0b2"
+
+
 def test_single_file_json_preserves_object_shape(monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm: _report(path))
 
