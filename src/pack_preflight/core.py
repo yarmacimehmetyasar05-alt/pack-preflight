@@ -185,7 +185,7 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
             return {
                 "file": str(pdf_path),
                 "ok": False,
-                "page_count": len(reader.pages),
+                "page_count": 0,
                 "pages": [],
                 "pdfx": {"version": None, "conformance": None},
                 "output_intents": [],
