@@ -6,7 +6,7 @@ import sys
 from typing import Any
 
 from .core import inspect_pdf
-from .report import write_html_report
+from .report import write_html_batch_report, write_html_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--html",
         metavar="PATH",
-        help="Write a standalone HTML report to PATH (single PDF only)",
+        help="Write a standalone HTML report or batch dashboard to PATH",
     )
     return parser
 
@@ -104,11 +104,7 @@ def _print_batch_summary(reports: list[dict[str, Any]]) -> None:
 
 
 def run(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-
-    if args.html and len(args.pdf) != 1:
-        parser.error("--html can only be used when inspecting one PDF")
+    args = build_parser().parse_args(argv)
 
     reports = [
         inspect_pdf(path, min_bleed_mm=args.min_bleed_mm)
@@ -116,7 +112,10 @@ def run(argv: list[str] | None = None) -> int:
     ]
 
     if args.html:
-        output_path = write_html_report(reports[0], args.html)
+        if len(reports) == 1:
+            output_path = write_html_report(reports[0], args.html)
+        else:
+            output_path = write_html_batch_report(reports, args.html)
         print(f"HTML report: {output_path}")
 
     if args.json:
