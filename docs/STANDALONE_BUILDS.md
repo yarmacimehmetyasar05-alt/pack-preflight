@@ -4,7 +4,7 @@ The normal developer installation uses Python. For print and prepress beta teste
 
 ## Download a public beta
 
-Open the repository's **Releases** page and choose the latest prerelease. The first public beta is tagged `v0.1.0-beta.1`.
+Open the repository's **Releases** page and choose the latest prerelease. The current public beta is tagged `v0.1.0-beta.2`.
 
 Each release contains platform-named ZIP archives for macOS, Windows, and Linux.
 
