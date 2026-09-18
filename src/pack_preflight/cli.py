@@ -5,6 +5,7 @@ import json
 import sys
 
 from .core import inspect_pdf
+from .report import write_html_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,12 +25,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Output machine-readable JSON",
     )
+    parser.add_argument(
+        "--html",
+        metavar="PATH",
+        help="Write a standalone HTML report to PATH",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     report = inspect_pdf(args.pdf, min_bleed_mm=args.min_bleed_mm)
+
+    if args.html:
+        output_path = write_html_report(report, args.html)
+        print(f"HTML report: {output_path}")
 
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
