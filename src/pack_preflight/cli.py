@@ -38,6 +38,24 @@ def main() -> None:
         print(f"Pages: {report['page_count']}")
         print(f"Result: {'PASS' if report['ok'] else 'FAIL'}")
 
+        pdfx = report.get("pdfx", {})
+        if pdfx.get("version") or pdfx.get("conformance"):
+            print(
+                "PDF/X metadata: "
+                f"version={pdfx.get('version') or '-'}, "
+                f"conformance={pdfx.get('conformance') or '-'}"
+            )
+
+        if report.get("output_intents"):
+            for index, intent in enumerate(report["output_intents"], start=1):
+                print(
+                    f"OutputIntent {index}: "
+                    f"subtype={intent.get('subtype') or '-'}, "
+                    "condition="
+                    f"{intent.get('output_condition_identifier') or '-'}, "
+                    f"profile={'yes' if intent.get('has_destination_profile') else 'no'}"
+                )
+
         for page in report.get("pages", []):
             trim_status = "explicit" if page["trimbox_explicit"] else "fallback"
             bleed_status = "explicit" if page["bleedbox_explicit"] else "fallback"
