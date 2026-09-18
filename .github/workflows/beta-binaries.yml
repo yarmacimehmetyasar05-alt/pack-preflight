@@ -5,6 +5,9 @@ on:
   push:
     branches: ["main"]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: build-${{ matrix.label }}
@@ -44,9 +47,45 @@ jobs:
       - name: Smoke-test executable
         run: python -c "import subprocess; subprocess.run([r'${{ matrix.binary }}', '--help'], check=True)"
 
-      - name: Upload beta executable
+      - name: Package beta executable
+        run: python -c "import pathlib, zipfile; p=pathlib.Path(r'${{ matrix.binary }}'); z=pathlib.Path('dist/pack-preflight-${{ matrix.label }}.zip'); f=zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED); f.write(p, arcname=p.name); f.close()"
+
+      - name: Upload beta archive
         uses: actions/upload-artifact@v4
         with:
           name: pack-preflight-${{ matrix.label }}
-          path: ${{ matrix.binary }}
+          path: dist/pack-preflight-${{ matrix.label }}.zip
           if-no-files-found: error
+
+  release:
+    name: publish-beta-release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v0.1.0-beta.1
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download packaged binaries
+        uses: actions/download-artifact@v5
+        with:
+          pattern: pack-preflight-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish prerelease once
+        shell: bash
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; leaving published assets unchanged."
+            exit 0
+          fi
+
+          gh release create "$TAG" release-assets/*.zip \
+            --target "$GITHUB_SHA" \
+            --title "pack-preflight v0.1.0 beta 1" \
+            --prerelease \
+            --notes-file docs/releases/v0.1.0-beta.1.md
