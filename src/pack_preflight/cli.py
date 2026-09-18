@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Any
 
 from .core import inspect_pdf
@@ -15,9 +16,14 @@ def build_parser() -> argparse.ArgumentParser:
         description="Check print and packaging PDFs for common prepress risks.",
     )
     parser.add_argument(
-        "pdf",
+        "input",
         nargs="+",
-        help="Path to one or more PDFs to inspect",
+        help="One or more PDF files or directories to inspect",
+    )
+    parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="When an input is a directory, include PDFs in nested folders",
     )
     parser.add_argument(
         "--min-bleed-mm",
@@ -36,6 +42,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write a standalone HTML report or batch dashboard to PATH",
     )
     return parser
+
+
+def collect_pdf_inputs(inputs: list[str], recursive: bool = False) -> list[str]:
+    collected: list[str] = []
+    seen: set[str] = set()
+
+    for raw in inputs:
+        path = Path(raw)
+
+        if path.is_dir():
+            candidates = path.rglob("*") if recursive else path.glob("*")
+            pdfs = sorted(
+                (
+                    candidate
+                    for candidate in candidates
+                    if candidate.is_file() and candidate.suffix.lower() == ".pdf"
+                ),
+                key=lambda candidate: str(candidate).lower(),
+            )
+        else:
+            pdfs = [path]
+
+        for pdf in pdfs:
+            key = str(pdf.resolve(strict=False))
+            if key in seen:
+                continue
+            seen.add(key)
+            collected.append(str(pdf))
+
+    return collected
 
 
 def _print_text_report(report: dict[str, Any]) -> None:
@@ -104,11 +140,16 @@ def _print_batch_summary(reports: list[dict[str, Any]]) -> None:
 
 
 def run(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    pdf_paths = collect_pdf_inputs(args.input, recursive=args.recursive)
+    if not pdf_paths:
+        parser.error("no PDF files found in the supplied inputs")
 
     reports = [
         inspect_pdf(path, min_bleed_mm=args.min_bleed_mm)
-        for path in args.pdf
+        for path in pdf_paths
     ]
 
     if args.html:
