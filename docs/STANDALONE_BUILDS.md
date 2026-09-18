@@ -4,9 +4,17 @@ The normal developer installation uses Python. For print and prepress beta teste
 
 ## Download a public beta
 
-Open the repository's **Releases** page and choose the latest prerelease. The current public beta is tagged `v0.1.0-beta.2`.
+Open the repository's **Releases** page and choose the latest prerelease. The current public beta is tagged `v0.1.0-beta.3`.
 
 Each release contains platform-named ZIP archives for macOS, Windows, and Linux.
+
+After unzipping, confirm the exact build before testing:
+
+```bash
+pack-preflight --version
+```
+
+On Windows use `pack-preflight.exe --version`. Beta 3 should report `0.1.0b3`.
 
 ## Maintainer build workflow
 
@@ -18,7 +26,7 @@ Maintainers can also create fresh workflow artifacts:
 4. Wait for the macOS, Windows, and Linux jobs to finish.
 5. Download the generated workflow artifacts.
 
-The workflow runs the automated tests before packaging each executable and performs a basic `--help` smoke test on the packaged binary.
+The workflow runs the automated tests before packaging each executable and smoke-tests both `--help` and `--version` on the packaged binary.
 
 ## Important beta limitations
 
