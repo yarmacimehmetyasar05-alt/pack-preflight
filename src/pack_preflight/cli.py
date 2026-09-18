@@ -37,6 +37,16 @@ def main() -> None:
         print(f"File: {report['file']}")
         print(f"Pages: {report['page_count']}")
         print(f"Result: {'PASS' if report['ok'] else 'FAIL'}")
+
+        for page in report.get("pages", []):
+            trim_status = "explicit" if page["trimbox_explicit"] else "fallback"
+            bleed_status = "explicit" if page["bleedbox_explicit"] else "fallback"
+            print(
+                f"Page {page['page']}: "
+                f"{page['trim_width_mm']:.2f} x {page['trim_height_mm']:.2f} mm "
+                f"(TrimBox {trim_status}, BleedBox {bleed_status})"
+            )
+
         if report["spot_colors"]:
             print("Spot colors: " + ", ".join(report["spot_colors"]))
         if report["findings"]:

@@ -112,6 +112,7 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
     pdf_path = Path(path)
     findings: list[Finding] = []
     spot_colors: set[str] = set()
+    page_summaries: list[dict[str, Any]] = []
 
     try:
         reader = PdfReader(str(pdf_path))
@@ -120,6 +121,7 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
             "file": str(pdf_path),
             "ok": False,
             "page_count": 0,
+            "pages": [],
             "spot_colors": [],
             "findings": [
                 Finding("pdf_unreadable", "error", f"Cannot read PDF: {exc}").to_dict()
@@ -136,6 +138,7 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
                 "file": str(pdf_path),
                 "ok": False,
                 "page_count": len(reader.pages),
+                "pages": [],
                 "spot_colors": [],
                 "findings": [
                     Finding(
@@ -149,13 +152,47 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
     trim_sizes: list[tuple[float, float]] = []
 
     for index, page in enumerate(reader.pages, start=1):
+        trimbox_explicit = "/TrimBox" in page
+        bleedbox_explicit = "/BleedBox" in page
+
+        if not trimbox_explicit:
+            findings.append(
+                Finding(
+                    "trimbox_not_explicit",
+                    "warning",
+                    "TrimBox is not explicitly defined; a PDF fallback box is being used.",
+                    index,
+                )
+            )
+
+        if not bleedbox_explicit:
+            findings.append(
+                Finding(
+                    "bleedbox_not_explicit",
+                    "warning",
+                    "BleedBox is not explicitly defined; a PDF fallback box is being used.",
+                    index,
+                )
+            )
+
         trim = page.trimbox or page.mediabox
         bleed = page.bleedbox or page.mediabox
 
         tx0, ty0, tx1, ty1 = _box_mm(trim)
         bx0, by0, bx1, by1 = _box_mm(bleed)
         trim_w, trim_h = tx1 - tx0, ty1 - ty0
-        trim_sizes.append((round(trim_w, 2), round(trim_h, 2)))
+        trim_w_rounded, trim_h_rounded = round(trim_w, 2), round(trim_h, 2)
+        trim_sizes.append((trim_w_rounded, trim_h_rounded))
+
+        page_summaries.append(
+            {
+                "page": index,
+                "trim_width_mm": trim_w_rounded,
+                "trim_height_mm": trim_h_rounded,
+                "trimbox_explicit": trimbox_explicit,
+                "bleedbox_explicit": bleedbox_explicit,
+            }
+        )
 
         margins = {
             "left": tx0 - bx0,
@@ -218,6 +255,7 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
         "file": str(pdf_path),
         "ok": not has_errors,
         "page_count": len(reader.pages),
+        "pages": page_summaries,
         "spot_colors": sorted(spot_colors),
         "findings": [f.to_dict() for f in findings],
     }
