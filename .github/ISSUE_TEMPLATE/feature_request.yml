@@ -1,0 +1,29 @@
+name: Feature request
+description: Suggest a practical print or packaging preflight improvement.
+title: "[Feature] "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Production problem
+      description: What real prepress or packaging problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: Desired behavior
+      description: What should pack-preflight detect, report, or export?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Current workflow
+      description: How is this checked today (Acrobat, PitStop, RIP, manual inspection, other)?
+  - type: textarea
+    id: references
+    attributes:
+      label: References or sample case
+      description: Add public references or a non-confidential synthetic example if available.

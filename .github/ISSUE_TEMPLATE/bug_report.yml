@@ -1,0 +1,49 @@
+name: Bug report
+description: Report an incorrect result, crash, false positive, or missed preflight risk.
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve pack-preflight. Do not upload confidential customer artwork unless you have permission.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, and pack-preflight version or commit.
+      placeholder: "macOS 15, Python 3.12, commit abc123"
+    validations:
+      required: true
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: Exact command you ran.
+      placeholder: "pack-preflight artwork.pdf --json"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: What did you expect the tool to report?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: What did the tool report instead?
+    validations:
+      required: true
+  - type: textarea
+    id: comparison
+    attributes:
+      label: Comparison with another preflight tool
+      description: If relevant, what did Acrobat or another workflow report?
+  - type: textarea
+    id: sample
+    attributes:
+      label: Reproduction details
+      description: Prefer a minimal synthetic PDF. Do not attach confidential customer artwork without permission.

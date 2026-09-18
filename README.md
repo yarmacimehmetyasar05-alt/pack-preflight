@@ -58,6 +58,12 @@ You can combine HTML and JSON output:
 pack-preflight artwork.pdf --html preflight-report.html --json
 ```
 
+## Beta testing
+
+Real prepress and packaging cases are especially useful now. See [docs/BETA_TESTING.md](docs/BETA_TESTING.md) before testing customer files or opening an issue.
+
+Please do not upload confidential customer artwork unless you have permission. A minimal synthetic PDF that reproduces the problem is preferred.
+
 ## PDF/X and OutputIntent note
 
 The tool reports PDF/X-related metadata and OutputIntent information when it finds them. It does **not** validate or certify PDF/X conformance, and the absence of an OutputIntent is currently reported as informational rather than a standalone failure.
