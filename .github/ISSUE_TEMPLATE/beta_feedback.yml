@@ -11,8 +11,8 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Operating system and pack-preflight beta version.
-      placeholder: "Windows 11, v0.1.0-beta.2"
+      description: Operating system and exact output of pack-preflight --version.
+      placeholder: "Windows 11, pack-preflight 0.1.0b3"
     validations:
       required: true
   - type: dropdown
