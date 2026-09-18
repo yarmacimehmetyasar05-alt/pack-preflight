@@ -6,7 +6,7 @@ Open-source PDF preflight checker for print and packaging workflows.
 
 The goal is to catch common production risks before a PDF reaches print or packaging production. The first release focuses on practical screening rather than formal certification.
 
-## Current checks
+## Current checks and diagnostics
 
 - Minimum bleed around the TrimBox
 - Missing explicit TrimBox or BleedBox
@@ -15,6 +15,8 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - Fonts that do not appear to be embedded
 - RGB color spaces in page resources
 - Spot-color names found in PDF color-space resources
+- PDF/X-related document metadata when present
+- Catalog OutputIntent entries when present
 - Encrypted or unreadable PDFs
 
 ## Install
@@ -42,6 +44,10 @@ Get JSON output:
 ```bash
 pack-preflight artwork.pdf --json
 ```
+
+## PDF/X and OutputIntent note
+
+The tool reports PDF/X-related metadata and OutputIntent information when it finds them. It does **not** validate or certify PDF/X conformance, and the absence of an OutputIntent is currently reported as informational rather than a standalone failure.
 
 ## Important limitation
 
