@@ -4,6 +4,28 @@ Thanks for testing **pack-preflight** with real print or packaging PDFs.
 
 The project is still an early screening tool. It does not certify PDF/X, ISO, Ghent Workgroup, food-contact, or regulatory compliance.
 
+## Five-minute beta test
+
+1. Download the current standalone beta from the repository's **Releases** page and unzip the archive for your operating system.
+2. Choose one non-confidential PDF whose expected prepress result you already know.
+3. Run the executable on that PDF.
+4. If possible, compare the result with Acrobat Preflight, PitStop, a RIP/workflow check, or your normal manual decision.
+5. Open a GitHub issue if pack-preflight crashes, misses a production risk, flags a valid file incorrectly, or reports something materially different from the tool/workflow you trust.
+
+Windows:
+
+```text
+pack-preflight.exe artwork.pdf
+```
+
+macOS or Linux:
+
+```bash
+./pack-preflight artwork.pdf
+```
+
+The standalone executables are currently unsigned and not notarized. Your operating system may show a security warning. Do not disable operating-system security controls globally just to run a beta build.
+
 ## What to test
 
 Useful beta cases include:
@@ -16,10 +38,37 @@ Useful beta cases include:
 - PDF/X metadata and OutputIntent variations
 - Multi-page PDFs with inconsistent page sizes
 - Encrypted or damaged PDFs
+- Folders containing several production PDFs
 
-## How to run
+## Batch and folder tests
 
-Install from the repository:
+Run several PDFs together:
+
+```bash
+pack-preflight cover.pdf insert.pdf carton.pdf
+```
+
+Scan PDFs directly inside a job folder:
+
+```bash
+pack-preflight ./customer-job
+```
+
+Include nested folders:
+
+```bash
+pack-preflight ./customer-job --recursive
+```
+
+Create one shareable HTML dashboard for a folder:
+
+```bash
+pack-preflight ./customer-job --recursive --html batch-report.html
+```
+
+## Install from source
+
+Developers can install from the repository:
 
 ```bash
 python -m venv .venv
@@ -50,12 +99,14 @@ pack-preflight artwork.pdf --json
 For a useful bug report, include:
 
 - operating system
-- Python version
-- pack-preflight version or commit
+- pack-preflight beta version or commit
 - the exact command you ran
 - the finding you expected
 - the finding you actually received
-- whether Acrobat, another preflight tool, or a print workflow gave a different result
+- whether Acrobat, PitStop, another preflight tool, a RIP/workflow, or manual inspection gave a different result
+- a minimal synthetic reproduction PDF when possible
+
+A report that says **"this valid file was flagged incorrectly"** is just as valuable as a missed-risk report.
 
 ## Confidential artwork
 
