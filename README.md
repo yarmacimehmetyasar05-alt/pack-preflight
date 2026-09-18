@@ -19,6 +19,15 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - Catalog OutputIntent entries when present
 - Encrypted or unreadable PDFs
 - Standalone HTML reports for sharing results
+- Multi-file batch preflight from one command
+
+## Download the beta
+
+The first public prerelease is **v0.1.0-beta.1**, with standalone archives for macOS, Windows, and Linux:
+
+https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.1
+
+The standalone executables are currently unsigned and not notarized.
 
 ## Install from source
 
@@ -30,8 +39,22 @@ pip install -e .
 
 ## Run
 
+Inspect one PDF:
+
 ```bash
 pack-preflight artwork.pdf
+```
+
+Inspect several PDFs in one command:
+
+```bash
+pack-preflight cover.pdf insert.pdf carton.pdf
+```
+
+Multi-file text mode prints a compact PASS/FAIL summary for each file. Multi-file JSON mode returns an array:
+
+```bash
+pack-preflight cover.pdf insert.pdf carton.pdf --json
 ```
 
 Set a custom bleed threshold:
@@ -46,13 +69,13 @@ Get JSON output:
 pack-preflight artwork.pdf --json
 ```
 
-Write a self-contained HTML report:
+Write a self-contained HTML report for a single PDF:
 
 ```bash
 pack-preflight artwork.pdf --html preflight-report.html
 ```
 
-You can combine HTML and JSON output:
+You can combine single-file HTML and JSON output:
 
 ```bash
 pack-preflight artwork.pdf --html preflight-report.html --json
@@ -61,8 +84,6 @@ pack-preflight artwork.pdf --html preflight-report.html --json
 ## Standalone beta builds
 
 Public beta archives for macOS, Windows, and Linux are published through GitHub Releases. See [docs/STANDALONE_BUILDS.md](docs/STANDALONE_BUILDS.md).
-
-These beta executables are currently unsigned and not notarized.
 
 ## Beta testing
 
