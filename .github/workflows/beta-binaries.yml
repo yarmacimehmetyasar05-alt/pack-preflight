@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      TAG: v0.1.0-beta.1
+      TAG: v0.1.0-beta.2
 
     steps:
       - uses: actions/checkout@v5
@@ -86,6 +86,6 @@ jobs:
 
           gh release create "$TAG" release-assets/*.zip \
             --target "$GITHUB_SHA" \
-            --title "pack-preflight v0.1.0 beta 1" \
+            --title "pack-preflight v0.1.0 beta 2" \
             --prerelease \
-            --notes-file docs/releases/v0.1.0-beta.1.md
+            --notes-file docs/releases/v0.1.0-beta.2.md
