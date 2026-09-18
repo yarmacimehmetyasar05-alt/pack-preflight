@@ -7,7 +7,7 @@ The project is still an early screening tool. It does not certify PDF/X, ISO, Gh
 ## Five-minute beta test
 
 1. Download the current standalone beta from the repository's **Releases** page and unzip the archive for your operating system.
-2. Confirm the build version with `pack-preflight --version` (or `pack-preflight.exe --version` on Windows). The current beta should report `0.1.0b3`.
+2. Confirm the build version with `pack-preflight --version` (or `pack-preflight.exe --version` on Windows). The current beta should report `0.1.0b4`.
 3. Choose one non-confidential PDF whose expected prepress result you already know.
 4. Run the executable on that PDF.
 5. If possible, compare the result with Acrobat Preflight, PitStop, a RIP/workflow check, or your normal manual decision.
