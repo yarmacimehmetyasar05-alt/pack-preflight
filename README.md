@@ -25,9 +25,9 @@ The goal is to catch common production risks before a PDF reaches print or packa
 
 ## Download the beta
 
-The first public prerelease is **v0.1.0-beta.1**, with standalone archives for macOS, Windows, and Linux:
+The current public prerelease is **v0.1.0-beta.2**, with standalone archives for macOS, Windows, and Linux:
 
-https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.1
+https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.2
 
 The standalone executables are currently unsigned and not notarized.
 
