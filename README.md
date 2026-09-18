@@ -18,6 +18,7 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - PDF/X-related document metadata when present
 - Catalog OutputIntent entries when present
 - Encrypted or unreadable PDFs
+- Standalone HTML reports for sharing results
 
 ## Install
 
@@ -43,6 +44,18 @@ Get JSON output:
 
 ```bash
 pack-preflight artwork.pdf --json
+```
+
+Write a self-contained HTML report:
+
+```bash
+pack-preflight artwork.pdf --html preflight-report.html
+```
+
+You can combine HTML and JSON output:
+
+```bash
+pack-preflight artwork.pdf --html preflight-report.html --json
 ```
 
 ## PDF/X and OutputIntent note
