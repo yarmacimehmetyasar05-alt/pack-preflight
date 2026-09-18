@@ -2,7 +2,7 @@
 
 Open-source PDF preflight checker for print and packaging workflows.
 
-**Status:** early MVP.
+**Status:** early public beta.
 
 The goal is to catch common production risks before a PDF reaches print or packaging production. The first release focuses on practical screening rather than formal certification.
 
@@ -20,7 +20,7 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - Encrypted or unreadable PDFs
 - Standalone HTML reports for sharing results
 
-## Install
+## Install from source
 
 ```bash
 python -m venv .venv
@@ -60,7 +60,7 @@ pack-preflight artwork.pdf --html preflight-report.html --json
 
 ## Standalone beta builds
 
-Maintainers can build one-file macOS, Windows, and Linux executables through GitHub Actions for testers who do not want to install Python packages. See [docs/STANDALONE_BUILDS.md](docs/STANDALONE_BUILDS.md).
+Public beta archives for macOS, Windows, and Linux are published through GitHub Releases. See [docs/STANDALONE_BUILDS.md](docs/STANDALONE_BUILDS.md).
 
 These beta executables are currently unsigned and not notarized.
 
