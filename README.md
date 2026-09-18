@@ -26,12 +26,12 @@ The goal is to catch common production risks before a PDF reaches print or packa
 
 ## Download the beta
 
-The current public prerelease is **v0.1.0-beta.3**.
+The current public prerelease is **v0.1.0-beta.4**.
 
-- macOS: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.3/pack-preflight-macos.zip
-- Windows: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.3/pack-preflight-windows.zip
-- Linux: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.3/pack-preflight-linux.zip
-- Release notes: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.3
+- macOS: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.4/pack-preflight-macos.zip
+- Windows: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.4/pack-preflight-windows.zip
+- Linux: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.4/pack-preflight-linux.zip
+- Release notes: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.4
 
 The standalone executables are currently unsigned and not notarized.
 

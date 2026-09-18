@@ -31,7 +31,7 @@ def test_version_flag_reports_beta_version(capsys) -> None:
         cli.run(["--version"])
 
     assert exc_info.value.code == 0
-    assert capsys.readouterr().out.strip() == "pack-preflight 0.1.0b3"
+    assert capsys.readouterr().out.strip() == "pack-preflight 0.1.0b4"
 
 
 def test_single_file_json_preserves_object_shape(monkeypatch, capsys) -> None:
