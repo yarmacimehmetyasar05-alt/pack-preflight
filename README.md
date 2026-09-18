@@ -133,7 +133,7 @@ Public beta archives for macOS, Windows, and Linux are published through GitHub 
 
 Real prepress and packaging cases are especially useful now. See [docs/BETA_TESTING.md](docs/BETA_TESTING.md) before testing customer files or opening an issue.
 
-Please do not upload confidential customer artwork unless you have permission. A minimal synthetic PDF that reproduces the problem is preferred.
+Please do not upload confidential customer artwork unless you have permission. A minimal synthetic PDF that reproduces the problem is preferred. The project also includes a safe demo generator; see [docs/DEMO_FILES.md](docs/DEMO_FILES.md).
 
 ## PDF/X and OutputIntent note
 
