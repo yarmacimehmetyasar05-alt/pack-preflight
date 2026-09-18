@@ -22,23 +22,24 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - Multi-file batch preflight from one command
 - Combined HTML dashboard for batch runs
 - Folder scanning, with optional recursive subfolder scanning
+- Exact build identification with `--version`
 
 ## Download the beta
 
-The current public prerelease is **v0.1.0-beta.2**.
+The current public prerelease is **v0.1.0-beta.3**.
 
-- macOS: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.2/pack-preflight-macos.zip
-- Windows: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.2/pack-preflight-windows.zip
-- Linux: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.2/pack-preflight-linux.zip
-- Release notes: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.2
+- macOS: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.3/pack-preflight-macos.zip
+- Windows: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.3/pack-preflight-windows.zip
+- Linux: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.3/pack-preflight-linux.zip
+- Release notes: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.3
 
 The standalone executables are currently unsigned and not notarized.
 
 ## Five-minute beta test
 
-Use one non-confidential PDF whose expected prepress result you already know, run the standalone beta, and compare the result with your normal workflow. Acrobat Preflight, PitStop, RIP/workflow checks, and experienced manual inspection are all useful comparisons.
+Use one non-confidential PDF whose expected prepress result you already know, confirm the build with `--version`, run the standalone beta, and compare the result with your normal workflow. Acrobat Preflight, PitStop, RIP/workflow checks, and experienced manual inspection are all useful comparisons.
 
-If pack-preflight crashes, misses a production risk, flags a valid file incorrectly, or materially disagrees with your trusted workflow, please open a GitHub issue. There is now a dedicated **Beta feedback** issue form so real-world comparisons can be reported consistently.
+If pack-preflight crashes, misses a production risk, flags a valid file incorrectly, or materially disagrees with your trusted workflow, please open a GitHub issue. There is a dedicated **Beta feedback** issue form so real-world comparisons can be reported consistently.
 
 Tester call: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/issues/27
 
@@ -53,6 +54,12 @@ pip install -e .
 ```
 
 ## Run
+
+Show the installed build version:
+
+```bash
+pack-preflight --version
+```
 
 Inspect one PDF:
 
