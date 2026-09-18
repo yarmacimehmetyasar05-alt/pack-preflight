@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pack-preflight"
+version = "0.1.0"
+description = "Open-source PDF preflight checker for print and packaging workflows"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Mehmet Yasar Yarmaci"}]
+dependencies = ["pypdf>=5.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+pack-preflight = "pack_preflight.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pack_preflight"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
