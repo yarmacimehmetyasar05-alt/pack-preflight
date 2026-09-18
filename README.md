@@ -58,6 +58,12 @@ You can combine HTML and JSON output:
 pack-preflight artwork.pdf --html preflight-report.html --json
 ```
 
+## Standalone beta builds
+
+Maintainers can build one-file macOS, Windows, and Linux executables through GitHub Actions for testers who do not want to install Python packages. See [docs/STANDALONE_BUILDS.md](docs/STANDALONE_BUILDS.md).
+
+These beta executables are currently unsigned and not notarized.
+
 ## Beta testing
 
 Real prepress and packaging cases are especially useful now. See [docs/BETA_TESTING.md](docs/BETA_TESTING.md) before testing customer files or opening an issue.
