@@ -1,7 +1,5 @@
 import json
 
-import pytest
-
 from pack_preflight import cli
 
 
@@ -64,8 +62,16 @@ def test_multiple_files_text_uses_compact_summary(monkeypatch, capsys) -> None:
     assert "pages=1" in output
 
 
-def test_html_rejects_multiple_files() -> None:
-    with pytest.raises(SystemExit) as exc_info:
-        cli.run(["one.pdf", "two.pdf", "--html", "report.html"])
+def test_multiple_files_html_uses_batch_writer(monkeypatch, capsys, tmp_path) -> None:
+    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm: _report(path))
+    output = tmp_path / "batch.html"
 
-    assert exc_info.value.code == 2
+    exit_code = cli.run(["one.pdf", "two.pdf", "--html", str(output)])
+
+    assert exit_code == 0
+    assert output.exists()
+    html = output.read_text(encoding="utf-8")
+    assert "pack-preflight batch report" in html
+    assert "one.pdf" in html
+    assert "two.pdf" in html
+    assert "HTML report:" in capsys.readouterr().out

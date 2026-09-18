@@ -1,12 +1,17 @@
 from pathlib import Path
 
-from pack_preflight.report import render_html_report, write_html_report
+from pack_preflight.report import (
+    render_html_batch_report,
+    render_html_report,
+    write_html_batch_report,
+    write_html_report,
+)
 
 
-def _sample_report() -> dict:
+def _sample_report(file: str = "artwork.pdf", ok: bool = True) -> dict:
     return {
-        "file": "artwork.pdf",
-        "ok": True,
+        "file": file,
+        "ok": ok,
         "page_count": 1,
         "pages": [
             {
@@ -31,7 +36,7 @@ def _sample_report() -> dict:
         "findings": [
             {
                 "code": "output_intent_missing?",
-                "severity": "info",
+                "severity": "info" if ok else "error",
                 "message": "Example <unsafe> message",
                 "page": None,
             }
@@ -58,3 +63,35 @@ def test_write_html_report(tmp_path: Path) -> None:
     assert written == output
     assert output.exists()
     assert "artwork.pdf" in output.read_text(encoding="utf-8")
+
+
+def test_render_html_batch_report_summarizes_files_and_escapes_names() -> None:
+    reports = [
+        _sample_report("good.pdf", ok=True),
+        _sample_report("bad<name>.pdf", ok=False),
+    ]
+
+    html = render_html_batch_report(reports)
+
+    assert "pack-preflight batch report" in html
+    assert "<strong>Files</strong><br>2" in html
+    assert "<strong>Passed</strong><br>1" in html
+    assert "<strong>Failed</strong><br>1" in html
+    assert "good.pdf" in html
+    assert "bad&lt;name&gt;.pdf" in html
+    assert "bad<name>.pdf" not in html
+    assert "CutContour" in html
+
+
+def test_write_html_batch_report(tmp_path: Path) -> None:
+    output = tmp_path / "batch.html"
+    written = write_html_batch_report(
+        [_sample_report("one.pdf"), _sample_report("two.pdf")],
+        output,
+    )
+
+    assert written == output
+    assert output.exists()
+    html = output.read_text(encoding="utf-8")
+    assert "one.pdf" in html
+    assert "two.pdf" in html

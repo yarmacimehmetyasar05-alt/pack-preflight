@@ -20,6 +20,7 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - Encrypted or unreadable PDFs
 - Standalone HTML reports for sharing results
 - Multi-file batch preflight from one command
+- Combined HTML dashboard for batch runs
 
 ## Download the beta
 
@@ -57,6 +58,14 @@ Multi-file text mode prints a compact PASS/FAIL summary for each file. Multi-fil
 pack-preflight cover.pdf insert.pdf carton.pdf --json
 ```
 
+Create one self-contained HTML dashboard for a whole batch:
+
+```bash
+pack-preflight cover.pdf insert.pdf carton.pdf --html batch-report.html
+```
+
+The batch dashboard summarizes file status, page counts, errors, warnings, info findings, and detected spot colors.
+
 Set a custom bleed threshold:
 
 ```bash
@@ -69,13 +78,13 @@ Get JSON output:
 pack-preflight artwork.pdf --json
 ```
 
-Write a self-contained HTML report for a single PDF:
+Write a detailed self-contained HTML report for a single PDF:
 
 ```bash
 pack-preflight artwork.pdf --html preflight-report.html
 ```
 
-You can combine single-file HTML and JSON output:
+You can combine HTML and JSON output:
 
 ```bash
 pack-preflight artwork.pdf --html preflight-report.html --json

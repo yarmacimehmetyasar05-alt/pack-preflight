@@ -11,6 +11,14 @@ def _text(value: Any) -> str:
     return escape(str(value))
 
 
+def _finding_count(report: dict[str, Any], severity: str) -> int:
+    return sum(
+        1
+        for finding in report.get("findings", [])
+        if finding.get("severity") == severity
+    )
+
+
 def render_html_report(report: dict[str, Any]) -> str:
     status = "PASS" if report.get("ok") else "FAIL"
     pdfx = report.get("pdfx", {})
@@ -116,7 +124,83 @@ th {{ background: #f2f2f2; }}
 """
 
 
+def render_html_batch_report(reports: list[dict[str, Any]]) -> str:
+    total = len(reports)
+    passed = sum(1 for report in reports if report.get("ok"))
+    failed = total - passed
+    total_pages = sum(int(report.get("page_count", 0)) for report in reports)
+
+    rows = "".join(
+        "<tr>"
+        f"<td>{'PASS' if report.get('ok') else 'FAIL'}</td>"
+        f"<td>{_text(report.get('file'))}</td>"
+        f"<td>{_text(report.get('page_count'))}</td>"
+        f"<td>{_finding_count(report, 'error')}</td>"
+        f"<td>{_finding_count(report, 'warning')}</td>"
+        f"<td>{_finding_count(report, 'info')}</td>"
+        f"<td>{', '.join(escape(str(item)) for item in report.get('spot_colors', [])) or '-'}</td>"
+        "</tr>"
+        for report in reports
+    )
+
+    if not rows:
+        rows = '<tr><td colspan="7">No reports</td></tr>'
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pack-preflight batch report</title>
+<style>
+body {{ font-family: system-ui, -apple-system, sans-serif; margin: 2rem; line-height: 1.45; }}
+h1, h2 {{ margin-bottom: .4rem; }}
+.summary {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin: 1rem 0 2rem; }}
+.card {{ border: 1px solid #bbb; border-radius: 8px; padding: .8rem 1rem; }}
+table {{ border-collapse: collapse; width: 100%; margin: .75rem 0 2rem; }}
+th, td {{ border: 1px solid #ccc; padding: .5rem; text-align: left; vertical-align: top; }}
+th {{ background: #f2f2f2; }}
+.small {{ color: #555; font-size: .92rem; }}
+</style>
+</head>
+<body>
+<h1>pack-preflight batch report</h1>
+<p class="small">Practical screening dashboard; not a PDF/X, ISO, GWG, or regulatory certification.</p>
+
+<div class="summary">
+  <div class="card"><strong>Files</strong><br>{total}</div>
+  <div class="card"><strong>Passed</strong><br>{passed}</div>
+  <div class="card"><strong>Failed</strong><br>{failed}</div>
+  <div class="card"><strong>Total pages</strong><br>{total_pages}</div>
+</div>
+
+<h2>Files</h2>
+<table>
+<tr>
+  <th>Result</th>
+  <th>File</th>
+  <th>Pages</th>
+  <th>Errors</th>
+  <th>Warnings</th>
+  <th>Info</th>
+  <th>Spot colors</th>
+</tr>
+{rows}
+</table>
+</body>
+</html>
+"""
+
+
 def write_html_report(report: dict[str, Any], path: str | Path) -> Path:
     output_path = Path(path)
     output_path.write_text(render_html_report(report), encoding="utf-8")
+    return output_path
+
+
+def write_html_batch_report(
+    reports: list[dict[str, Any]], path: str | Path
+) -> Path:
+    output_path = Path(path)
+    output_path.write_text(render_html_batch_report(reports), encoding="utf-8")
     return output_path
