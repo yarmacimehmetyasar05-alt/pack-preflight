@@ -31,6 +31,12 @@ https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-b
 
 The standalone executables are currently unsigned and not notarized.
 
+## Five-minute beta test
+
+Use one non-confidential PDF whose expected prepress result you already know, run the standalone beta, and compare the result with your normal workflow. Acrobat Preflight, PitStop, RIP/workflow checks, and experienced manual inspection are all useful comparisons.
+
+If pack-preflight crashes, misses a production risk, flags a valid file incorrectly, or materially disagrees with your trusted workflow, please open a GitHub issue. See [docs/BETA_TESTING.md](docs/BETA_TESTING.md) for the short test procedure and privacy guidance.
+
 ## Install from source
 
 ```bash
