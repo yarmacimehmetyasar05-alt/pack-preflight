@@ -7,20 +7,23 @@ The project is still an early screening tool. It does not certify PDF/X, ISO, Gh
 ## Five-minute beta test
 
 1. Download the current standalone beta from the repository's **Releases** page and unzip the archive for your operating system.
-2. Choose one non-confidential PDF whose expected prepress result you already know.
-3. Run the executable on that PDF.
-4. If possible, compare the result with Acrobat Preflight, PitStop, a RIP/workflow check, or your normal manual decision.
-5. Open a GitHub issue if pack-preflight crashes, misses a production risk, flags a valid file incorrectly, or reports something materially different from the tool/workflow you trust.
+2. Confirm the build version with `pack-preflight --version` (or `pack-preflight.exe --version` on Windows).
+3. Choose one non-confidential PDF whose expected prepress result you already know.
+4. Run the executable on that PDF.
+5. If possible, compare the result with Acrobat Preflight, PitStop, a RIP/workflow check, or your normal manual decision.
+6. Open a GitHub issue if pack-preflight crashes, misses a production risk, flags a valid file incorrectly, or reports something materially different from the tool/workflow you trust.
 
 Windows:
 
 ```text
+pack-preflight.exe --version
 pack-preflight.exe artwork.pdf
 ```
 
 macOS or Linux:
 
 ```bash
+./pack-preflight --version
 ./pack-preflight artwork.pdf
 ```
 
@@ -99,7 +102,7 @@ pack-preflight artwork.pdf --json
 For a useful bug report, include:
 
 - operating system
-- pack-preflight beta version or commit
+- output of `pack-preflight --version`
 - the exact command you ran
 - the finding you expected
 - the finding you actually received

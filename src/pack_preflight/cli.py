@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .core import inspect_pdf
 from .report import write_html_batch_report, write_html_report
 
@@ -14,6 +15,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pack-preflight",
         description="Check print and packaging PDFs for common prepress risks.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument(
         "input",
