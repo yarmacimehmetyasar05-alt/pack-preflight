@@ -21,6 +21,7 @@ The goal is to catch common production risks before a PDF reaches print or packa
 - Standalone HTML reports for sharing results
 - Multi-file batch preflight from one command
 - Combined HTML dashboard for batch runs
+- Folder scanning, with optional recursive subfolder scanning
 
 ## Download the beta
 
@@ -52,16 +53,30 @@ Inspect several PDFs in one command:
 pack-preflight cover.pdf insert.pdf carton.pdf
 ```
 
+Scan every PDF directly inside a job folder:
+
+```bash
+pack-preflight ./customer-job
+```
+
+Include PDFs in nested subfolders:
+
+```bash
+pack-preflight ./customer-job --recursive
+```
+
+Files supplied directly and PDFs discovered in folders can be mixed in the same run. Duplicate paths are inspected only once.
+
 Multi-file text mode prints a compact PASS/FAIL summary for each file. Multi-file JSON mode returns an array:
 
 ```bash
 pack-preflight cover.pdf insert.pdf carton.pdf --json
 ```
 
-Create one self-contained HTML dashboard for a whole batch:
+Create one self-contained HTML dashboard for a whole batch or folder:
 
 ```bash
-pack-preflight cover.pdf insert.pdf carton.pdf --html batch-report.html
+pack-preflight ./customer-job --recursive --html batch-report.html
 ```
 
 The batch dashboard summarizes file status, page counts, errors, warnings, info findings, and detected spot colors.
