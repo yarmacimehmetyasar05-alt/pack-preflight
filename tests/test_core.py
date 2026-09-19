@@ -3,13 +3,65 @@ from pathlib import Path
 from pypdf import PdfWriter
 from pypdf.generic import (
     ArrayObject,
+    DecodedStreamObject,
     DictionaryObject,
     NameObject,
+    NumberObject,
     RectangleObject,
     TextStringObject,
 )
 
 from pack_preflight.core import inspect_pdf
+
+
+def _write_image_pdf(
+    path: Path,
+    *,
+    pixel_width: int,
+    pixel_height: int,
+    placed_width_pt: float = 72.0,
+    placed_height_pt: float = 72.0,
+) -> None:
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=300, height=300)
+    page.trimbox = RectangleObject([18, 18, 282, 282])
+    page.bleedbox = RectangleObject([9, 9, 291, 291])
+
+    image = DecodedStreamObject()
+    image.set_data(bytes(pixel_width * pixel_height))
+    image.update(
+        {
+            NameObject("/Type"): NameObject("/XObject"),
+            NameObject("/Subtype"): NameObject("/Image"),
+            NameObject("/Width"): NumberObject(pixel_width),
+            NameObject("/Height"): NumberObject(pixel_height),
+            NameObject("/ColorSpace"): NameObject("/DeviceGray"),
+            NameObject("/BitsPerComponent"): NumberObject(8),
+        }
+    )
+    image_ref = writer._add_object(image)
+
+    page[NameObject("/Resources")] = DictionaryObject(
+        {
+            NameObject("/XObject"): DictionaryObject(
+                {NameObject("/Im1"): image_ref}
+            )
+        }
+    )
+
+    content = DecodedStreamObject()
+    content.set_data(
+        (
+            "q\n"
+            f"{placed_width_pt} 0 0 {placed_height_pt} 0 0 cm\n"
+            "/Im1 Do\n"
+            "Q\n"
+        ).encode("ascii")
+    )
+    page[NameObject("/Contents")] = writer._add_object(content)
+
+    with path.open("wb") as fh:
+        writer.write(fh)
 
 
 def test_clean_single_page_pdf(tmp_path: Path) -> None:
@@ -119,3 +171,44 @@ def test_missing_output_intent_is_informational(tmp_path: Path) -> None:
         f for f in report["findings"] if f["code"] == "output_intent_missing"
     )
     assert finding["severity"] == "info"
+
+
+def test_effective_image_dpi_below_default_threshold_is_reported(tmp_path: Path) -> None:
+    pdf = tmp_path / "low-res-image.pdf"
+    _write_image_pdf(pdf, pixel_width=300, pixel_height=300)
+
+    report = inspect_pdf(pdf)
+
+    finding = next(
+        f
+        for f in report["findings"]
+        if f["code"] == "image_effective_dpi_below_threshold"
+    )
+    assert finding["severity"] == "warning"
+    assert finding["page"] == 1
+    assert "300.0 x 300.0 dpi" in finding["message"]
+    assert "350.0 dpi" in finding["message"]
+
+
+def test_effective_image_dpi_above_default_threshold_is_not_reported(tmp_path: Path) -> None:
+    pdf = tmp_path / "high-res-image.pdf"
+    _write_image_pdf(pdf, pixel_width=400, pixel_height=400)
+
+    report = inspect_pdf(pdf)
+
+    assert not any(
+        f["code"] == "image_effective_dpi_below_threshold"
+        for f in report["findings"]
+    )
+
+
+def test_effective_image_dpi_threshold_is_configurable(tmp_path: Path) -> None:
+    pdf = tmp_path / "custom-threshold.pdf"
+    _write_image_pdf(pdf, pixel_width=300, pixel_height=300)
+
+    report = inspect_pdf(pdf, min_image_dpi=250.0)
+
+    assert not any(
+        f["code"] == "image_effective_dpi_below_threshold"
+        for f in report["findings"]
+    )

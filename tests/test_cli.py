@@ -35,7 +35,7 @@ def test_version_flag_reports_beta_version(capsys) -> None:
 
 
 def test_single_file_json_preserves_object_shape(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm: _report(path))
+    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm, min_image_dpi: _report(path))
 
     exit_code = cli.run(["one.pdf", "--json"])
     payload = json.loads(capsys.readouterr().out)
@@ -48,7 +48,9 @@ def test_single_file_json_preserves_object_shape(monkeypatch, capsys) -> None:
 def test_multiple_files_json_returns_array_and_combined_exit_code(
     monkeypatch, capsys
 ) -> None:
-    def fake_inspect(path: str, min_bleed_mm: float) -> dict:
+    def fake_inspect(
+        path: str, min_bleed_mm: float, min_image_dpi: float
+    ) -> dict:
         return _report(path, ok=Path(path).name != "bad.pdf")
 
     monkeypatch.setattr(cli, "inspect_pdf", fake_inspect)
@@ -62,7 +64,7 @@ def test_multiple_files_json_returns_array_and_combined_exit_code(
 
 
 def test_multiple_files_text_uses_compact_summary(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm: _report(path))
+    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm, min_image_dpi: _report(path))
 
     exit_code = cli.run(["one.pdf", "two.pdf"])
     output = capsys.readouterr().out
@@ -74,7 +76,7 @@ def test_multiple_files_text_uses_compact_summary(monkeypatch, capsys) -> None:
 
 
 def test_multiple_files_html_uses_batch_writer(monkeypatch, capsys, tmp_path) -> None:
-    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm: _report(path))
+    monkeypatch.setattr(cli, "inspect_pdf", lambda path, min_bleed_mm, min_image_dpi: _report(path))
     output = tmp_path / "batch.html"
 
     exit_code = cli.run(["one.pdf", "two.pdf", "--html", str(output)])
@@ -125,3 +127,21 @@ def test_empty_directory_is_a_parser_error(tmp_path) -> None:
         cli.run([str(tmp_path)])
 
     assert exc_info.value.code == 2
+
+
+def test_min_image_dpi_is_forwarded(monkeypatch, capsys) -> None:
+    observed: dict[str, float] = {}
+
+    def fake_inspect(
+        path: str, min_bleed_mm: float, min_image_dpi: float
+    ) -> dict:
+        observed["min_image_dpi"] = min_image_dpi
+        return _report(path)
+
+    monkeypatch.setattr(cli, "inspect_pdf", fake_inspect)
+
+    exit_code = cli.run(["one.pdf", "--min-image-dpi", "420"])
+
+    assert exit_code == 0
+    assert observed["min_image_dpi"] == 420.0
+    capsys.readouterr()

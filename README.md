@@ -18,6 +18,7 @@ The project is maintained by a print/prepress professional with long hands-on ex
 - Inconsistent page sizes
 - Fonts that do not appear to be embedded
 - RGB color spaces in page resources
+- Raster images below a configurable effective-resolution threshold (default: 350 dpi)
 - Spot-color names found in PDF color-space resources
 - PDF/X-related document metadata when present
 - Catalog OutputIntent entries when present
@@ -110,6 +111,14 @@ Set a custom bleed threshold:
 ```bash
 pack-preflight artwork.pdf --min-bleed-mm 5
 ```
+
+Set a custom effective-image-resolution threshold:
+
+```bash
+pack-preflight artwork.pdf --min-image-dpi 300
+```
+
+The image check uses effective resolution based on the embedded pixel dimensions and placed size in the PDF, rather than relying on nominal image metadata alone.
 
 Get JSON output:
 
