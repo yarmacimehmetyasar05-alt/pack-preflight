@@ -6,6 +6,10 @@ Open-source PDF preflight checker for print and packaging workflows.
 
 The goal is to catch common production risks before a PDF reaches print or packaging production. The first release focuses on practical screening rather than formal certification.
 
+## Maintainer background
+
+The project is maintained by a print/prepress professional with long hands-on experience in offset printing, packaging production, and prepress workflows. pack-preflight is being developed around practical production problems encountered in real print and packaging work.
+
 ## Current checks and diagnostics
 
 - Minimum bleed around the TrimBox
