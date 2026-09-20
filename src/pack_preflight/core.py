@@ -84,32 +84,304 @@ def _read_output_intents(reader: PdfReader) -> list[dict[str, Any]]:
     return intents
 
 
-def _resource_has_rgb(obj: Any, seen: set[int]) -> bool:
+def _colorspace_info(
+    obj: Any,
+    resources: DictionaryObject | None = None,
+    seen: set[int] | None = None,
+) -> tuple[str, str]:
+    """Return (kind, label) for a PDF color space.
+
+    kind is one of rgb, cmyk, gray, spot, pattern, or other.
+    """
     obj = _resolve(obj)
+    seen = set() if seen is None else seen
     identity = id(obj)
     if identity in seen:
-        return False
+        return ("other", "recursive")
     seen.add(identity)
 
-    if isinstance(obj, NameObject):
-        return str(obj) in {"/DeviceRGB", "/CalRGB"}
+    name = str(obj) if isinstance(obj, (NameObject, str)) else None
+    if name:
+        if name == "/DeviceRGB":
+            return ("rgb", "DeviceRGB")
+        if name == "/DeviceCMYK":
+            return ("cmyk", "DeviceCMYK")
+        if name == "/DeviceGray":
+            return ("gray", "DeviceGray")
+        if name == "/Pattern":
+            return ("pattern", "Pattern")
 
-    if isinstance(obj, str):
-        return obj in {"/DeviceRGB", "/CalRGB"}
+        if resources is not None:
+            spaces = _resolve(resources.get("/ColorSpace"))
+            if isinstance(spaces, DictionaryObject) and obj in spaces:
+                return _colorspace_info(spaces.get(obj), resources, seen)
+        return ("other", name.lstrip("/"))
 
-    if isinstance(obj, ArrayObject):
-        return any(_resource_has_rgb(item, seen) for item in obj)
+    if isinstance(obj, ArrayObject) and obj:
+        family = str(_resolve(obj[0]))
+        if family == "/CalRGB":
+            return ("rgb", "CalRGB")
+        if family == "/CalGray":
+            return ("gray", "CalGray")
+        if family == "/ICCBased" and len(obj) >= 2:
+            profile = _resolve(obj[1])
+            if isinstance(profile, DictionaryObject):
+                try:
+                    components = int(profile.get("/N", 0))
+                except (TypeError, ValueError):
+                    components = 0
+                if components == 3:
+                    return ("rgb", "ICCBased RGB")
+                if components == 4:
+                    return ("cmyk", "ICCBased CMYK")
+                if components == 1:
+                    return ("gray", "ICCBased Gray")
+            return ("other", "ICCBased")
+        if family == "/Indexed" and len(obj) >= 2:
+            kind, label = _colorspace_info(obj[1], resources, seen)
+            return (kind, f"Indexed {label}")
+        if family in {"/Separation", "/DeviceN"}:
+            return ("spot", family.lstrip("/"))
+        if family == "/Pattern":
+            if len(obj) >= 2:
+                kind, label = _colorspace_info(obj[1], resources, seen)
+                return (kind, f"Pattern {label}")
+            return ("pattern", "Pattern")
 
-    if isinstance(obj, DictionaryObject):
-        for key, value in obj.items():
-            if str(key) == "/ColorSpace" and _resource_has_rgb(value, seen):
-                return True
-            if str(key) in {"/Resources", "/XObject", "/Pattern", "/Shading"}:
-                if _resource_has_rgb(value, seen):
-                    return True
-        return False
+    return ("other", "unknown")
 
-    return False
+
+def _new_color_usage() -> dict[str, Any]:
+    return {
+        "rgb": {"image": 0, "vector": 0, "text": 0},
+        "cmyk": {"image": 0, "vector": 0, "text": 0},
+        "gray": {"image": 0, "vector": 0, "text": 0},
+        "spaces": {"rgb": set(), "cmyk": set(), "gray": set()},
+    }
+
+
+def _record_color_usage(
+    usage: dict[str, Any],
+    kind: str,
+    content_type: str,
+    label: str,
+) -> None:
+    if kind not in {"rgb", "cmyk", "gray"}:
+        return
+    usage[kind][content_type] += 1
+    usage["spaces"][kind].add(label)
+
+
+def _resolved_named_colorspace(
+    value: Any,
+    resources: DictionaryObject,
+) -> tuple[str, str]:
+    return _colorspace_info(value, resources)
+
+
+def _scan_color_usage(
+    stream_obj: Any,
+    resources_obj: Any,
+    reader: PdfReader,
+    usage: dict[str, Any],
+    *,
+    inherited_nonstroke: tuple[str, str] = ("gray", "DeviceGray"),
+    inherited_stroke: tuple[str, str] = ("gray", "DeviceGray"),
+    inherited_text_render_mode: int = 0,
+    active_forms: set[int] | None = None,
+    depth: int = 0,
+) -> None:
+    if stream_obj is None or depth > 8:
+        return
+
+    resources = _resolve(resources_obj)
+    if not isinstance(resources, DictionaryObject):
+        resources = DictionaryObject()
+
+    try:
+        content = ContentStream(stream_obj, reader)
+    except Exception:
+        return
+
+    active_forms = set() if active_forms is None else active_forms
+    nonstroke = inherited_nonstroke
+    stroke = inherited_stroke
+    text_render_mode = inherited_text_render_mode
+    state_stack: list[tuple[tuple[str, str], tuple[str, str], int]] = []
+
+    fill_ops = {b"f", b"F", b"f*"}
+    stroke_ops = {b"S", b"s"}
+    both_ops = {b"B", b"B*", b"b", b"b*"}
+    text_show_ops = {b"Tj", b"TJ", b"'", b'"'}
+
+    for operands, operator in content.operations:
+        if operator == b"q":
+            state_stack.append((nonstroke, stroke, text_render_mode))
+            continue
+        if operator == b"Q":
+            if state_stack:
+                nonstroke, stroke, text_render_mode = state_stack.pop()
+            continue
+
+        if operator == b"rg":
+            nonstroke = ("rgb", "DeviceRGB")
+            continue
+        if operator == b"RG":
+            stroke = ("rgb", "DeviceRGB")
+            continue
+        if operator == b"k":
+            nonstroke = ("cmyk", "DeviceCMYK")
+            continue
+        if operator == b"K":
+            stroke = ("cmyk", "DeviceCMYK")
+            continue
+        if operator == b"g":
+            nonstroke = ("gray", "DeviceGray")
+            continue
+        if operator == b"G":
+            stroke = ("gray", "DeviceGray")
+            continue
+        if operator == b"cs" and operands:
+            nonstroke = _resolved_named_colorspace(operands[0], resources)
+            continue
+        if operator == b"CS" and operands:
+            stroke = _resolved_named_colorspace(operands[0], resources)
+            continue
+        if operator == b"Tr" and operands:
+            try:
+                text_render_mode = int(operands[0])
+            except (TypeError, ValueError):
+                pass
+            continue
+
+        if operator in fill_ops:
+            _record_color_usage(usage, nonstroke[0], "vector", nonstroke[1])
+            continue
+        if operator in stroke_ops:
+            _record_color_usage(usage, stroke[0], "vector", stroke[1])
+            continue
+        if operator in both_ops:
+            _record_color_usage(usage, nonstroke[0], "vector", nonstroke[1])
+            _record_color_usage(usage, stroke[0], "vector", stroke[1])
+            continue
+
+        if operator in text_show_ops:
+            if text_render_mode in {0, 2, 4, 6}:
+                _record_color_usage(usage, nonstroke[0], "text", nonstroke[1])
+            if text_render_mode in {1, 2, 5, 6}:
+                _record_color_usage(usage, stroke[0], "text", stroke[1])
+            continue
+
+        if operator == b"sh" and operands:
+            shadings = _resolve(resources.get("/Shading"))
+            if isinstance(shadings, DictionaryObject):
+                shading = _resolve(shadings.get(operands[0]))
+                if isinstance(shading, DictionaryObject):
+                    kind, label = _colorspace_info(
+                        shading.get("/ColorSpace"), resources
+                    )
+                    _record_color_usage(usage, kind, "vector", label)
+            continue
+
+        if operator != b"Do" or not operands:
+            continue
+
+        xobjects = _resolve(resources.get("/XObject"))
+        if not isinstance(xobjects, DictionaryObject):
+            continue
+        xobj = _resolve(xobjects.get(operands[0]))
+        if not isinstance(xobj, DictionaryObject):
+            continue
+
+        subtype = str(xobj.get("/Subtype", ""))
+        if subtype == "/Image":
+            if bool(xobj.get("/ImageMask", False)):
+                _record_color_usage(
+                    usage, nonstroke[0], "image", nonstroke[1]
+                )
+            else:
+                kind, label = _colorspace_info(xobj.get("/ColorSpace"), resources)
+                _record_color_usage(usage, kind, "image", label)
+            continue
+
+        if subtype == "/Form":
+            identity = id(xobj)
+            if identity in active_forms:
+                continue
+            form_resources = _resolve(xobj.get("/Resources")) or resources
+            active_forms.add(identity)
+            _scan_color_usage(
+                xobj,
+                form_resources,
+                reader,
+                usage,
+                inherited_nonstroke=nonstroke,
+                inherited_stroke=stroke,
+                inherited_text_render_mode=text_render_mode,
+                active_forms=active_forms,
+                depth=depth + 1,
+            )
+            active_forms.remove(identity)
+
+
+def _color_usage_for_output(usage: dict[str, Any]) -> dict[str, Any]:
+    return {
+        kind: {
+            **usage[kind],
+            "spaces": sorted(usage["spaces"][kind]),
+        }
+        for kind in ("rgb", "cmyk", "gray")
+    }
+
+
+def _add_rgb_findings(
+    findings: list[Finding],
+    usage: dict[str, Any],
+    page_number: int,
+    *,
+    has_output_intent: bool,
+) -> None:
+    rgb = usage["rgb"]
+    total_rgb = sum(rgb.values())
+    if not total_rgb:
+        return
+
+    spaces = ", ".join(sorted(usage["spaces"]["rgb"])) or "RGB"
+    context = f"color spaces={spaces}; OutputIntent={'yes' if has_output_intent else 'no'}"
+
+    labels = (
+        ("image", "rgb_image_content_detected", "RGB raster image"),
+        ("vector", "rgb_vector_content_detected", "RGB vector"),
+        ("text", "rgb_text_content_detected", "RGB text"),
+    )
+    for content_type, code, label in labels:
+        count = rgb[content_type]
+        if count:
+            findings.append(
+                Finding(
+                    code,
+                    "warning",
+                    (
+                        f"Used {label} content detected "
+                        f"({count} paint occurrence(s); {context})."
+                    ),
+                    page_number,
+                )
+            )
+
+    if sum(usage["cmyk"].values()):
+        findings.append(
+            Finding(
+                "mixed_rgb_cmyk_page",
+                "warning",
+                (
+                    "RGB and CMYK content are both used on this page. "
+                    "Final appearance depends on the color-management and RIP "
+                    "conversion path; review the separation before production."
+                ),
+                page_number,
+            )
+        )
 
 
 def _font_is_embedded(font_obj: Any) -> bool:
@@ -392,15 +664,14 @@ def inspect_pdf(
         trim_w_rounded, trim_h_rounded = round(trim_w, 2), round(trim_h, 2)
         trim_sizes.append((trim_w_rounded, trim_h_rounded))
 
-        page_summaries.append(
-            {
-                "page": index,
-                "trim_width_mm": trim_w_rounded,
-                "trim_height_mm": trim_h_rounded,
-                "trimbox_explicit": trimbox_explicit,
-                "bleedbox_explicit": bleedbox_explicit,
-            }
-        )
+        page_summary = {
+            "page": index,
+            "trim_width_mm": trim_w_rounded,
+            "trim_height_mm": trim_h_rounded,
+            "trimbox_explicit": trimbox_explicit,
+            "bleedbox_explicit": bleedbox_explicit,
+        }
+        page_summaries.append(page_summary)
 
         margins = {
             "left": tx0 - bx0,
@@ -430,17 +701,23 @@ def inspect_pdf(
             findings,
             user_unit=float(page.get("/UserUnit", 1.0)),
         )
-        if isinstance(resources, DictionaryObject):
-            if _resource_has_rgb(resources, set()):
-                findings.append(
-                    Finding(
-                        "rgb_colorspace_detected",
-                        "warning",
-                        "RGB color space detected in page resources.",
-                        index,
-                    )
-                )
 
+        color_usage = _new_color_usage()
+        _scan_color_usage(
+            page.get_contents(),
+            resources,
+            reader,
+            color_usage,
+        )
+        page_summary["color_usage"] = _color_usage_for_output(color_usage)
+        _add_rgb_findings(
+            findings,
+            color_usage,
+            index,
+            has_output_intent=bool(output_intents),
+        )
+
+        if isinstance(resources, DictionaryObject):
             fonts = _resolve(resources.get("/Font")) if resources.get("/Font") else None
             if isinstance(fonts, DictionaryObject):
                 for font_name, font_obj in fonts.items():

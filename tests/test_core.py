@@ -21,6 +21,7 @@ def _write_image_pdf(
     pixel_height: int,
     placed_width_pt: float = 72.0,
     placed_height_pt: float = 72.0,
+    color_space: str = "/DeviceGray",
 ) -> None:
     writer = PdfWriter()
     page = writer.add_blank_page(width=300, height=300)
@@ -28,14 +29,15 @@ def _write_image_pdf(
     page.bleedbox = RectangleObject([9, 9, 291, 291])
 
     image = DecodedStreamObject()
-    image.set_data(bytes(pixel_width * pixel_height))
+    components = 3 if color_space == "/DeviceRGB" else 4 if color_space == "/DeviceCMYK" else 1
+    image.set_data(bytes(pixel_width * pixel_height * components))
     image.update(
         {
             NameObject("/Type"): NameObject("/XObject"),
             NameObject("/Subtype"): NameObject("/Image"),
             NameObject("/Width"): NumberObject(pixel_width),
             NameObject("/Height"): NumberObject(pixel_height),
-            NameObject("/ColorSpace"): NameObject("/DeviceGray"),
+            NameObject("/ColorSpace"): NameObject(color_space),
             NameObject("/BitsPerComponent"): NumberObject(8),
         }
     )
@@ -58,6 +60,27 @@ def _write_image_pdf(
             "Q\n"
         ).encode("ascii")
     )
+    page[NameObject("/Contents")] = writer._add_object(content)
+
+    with path.open("wb") as fh:
+        writer.write(fh)
+
+
+def _write_content_pdf(
+    path: Path,
+    content_bytes: bytes,
+    *,
+    resources: DictionaryObject | None = None,
+) -> None:
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=300, height=300)
+    page.trimbox = RectangleObject([18, 18, 282, 282])
+    page.bleedbox = RectangleObject([9, 9, 291, 291])
+    if resources is not None:
+        page[NameObject("/Resources")] = resources
+
+    content = DecodedStreamObject()
+    content.set_data(content_bytes)
     page[NameObject("/Contents")] = writer._add_object(content)
 
     with path.open("wb") as fh:
@@ -212,3 +235,166 @@ def test_effective_image_dpi_threshold_is_configurable(tmp_path: Path) -> None:
         f["code"] == "image_effective_dpi_below_threshold"
         for f in report["findings"]
     )
+
+
+def test_used_rgb_vector_content_is_reported(tmp_path: Path) -> None:
+    pdf = tmp_path / "rgb-vector.pdf"
+    _write_content_pdf(
+        pdf,
+        b"0.1 0.2 0.3 rg 10 10 40 40 re f\n",
+    )
+
+    report = inspect_pdf(pdf)
+
+    assert any(
+        f["code"] == "rgb_vector_content_detected"
+        for f in report["findings"]
+    )
+    usage = report["pages"][0]["color_usage"]
+    assert usage["rgb"]["vector"] == 1
+    assert usage["rgb"]["spaces"] == ["DeviceRGB"]
+
+
+def test_unused_rgb_resource_does_not_trigger_warning(tmp_path: Path) -> None:
+    pdf = tmp_path / "unused-rgb-resource.pdf"
+    resources = DictionaryObject(
+        {
+            NameObject("/ColorSpace"): DictionaryObject(
+                {NameObject("/UnusedRGB"): NameObject("/DeviceRGB")}
+            )
+        }
+    )
+    _write_content_pdf(
+        pdf,
+        b"0 0 0 1 k 10 10 40 40 re f\n",
+        resources=resources,
+    )
+
+    report = inspect_pdf(pdf)
+
+    assert not any(
+        f["code"].startswith("rgb_")
+        for f in report["findings"]
+    )
+    usage = report["pages"][0]["color_usage"]
+    assert usage["cmyk"]["vector"] == 1
+
+
+def test_rgb_image_content_is_reported(tmp_path: Path) -> None:
+    pdf = tmp_path / "rgb-image.pdf"
+    _write_image_pdf(
+        pdf,
+        pixel_width=400,
+        pixel_height=400,
+        color_space="/DeviceRGB",
+    )
+
+    report = inspect_pdf(pdf)
+
+    assert any(
+        f["code"] == "rgb_image_content_detected"
+        for f in report["findings"]
+    )
+    usage = report["pages"][0]["color_usage"]
+    assert usage["rgb"]["image"] == 1
+
+
+def test_rgb_text_content_is_reported(tmp_path: Path) -> None:
+    pdf = tmp_path / "rgb-text.pdf"
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type1"),
+            NameObject("/BaseFont"): NameObject("/Helvetica"),
+        }
+    )
+    resources = DictionaryObject(
+        {
+            NameObject("/Font"): DictionaryObject(
+                {NameObject("/F1"): font}
+            )
+        }
+    )
+    _write_content_pdf(
+        pdf,
+        (
+            b"0.1 0.2 0.3 rg "
+            b"BT /F1 12 Tf 10 10 Td (RGB text) Tj ET\n"
+        ),
+        resources=resources,
+    )
+
+    report = inspect_pdf(pdf)
+
+    assert any(
+        f["code"] == "rgb_text_content_detected"
+        for f in report["findings"]
+    )
+    usage = report["pages"][0]["color_usage"]
+    assert usage["rgb"]["text"] == 1
+
+
+def test_mixed_rgb_and_cmyk_page_is_reported(tmp_path: Path) -> None:
+    pdf = tmp_path / "mixed-rgb-cmyk.pdf"
+    _write_content_pdf(
+        pdf,
+        (
+            b"0.1 0.2 0.3 rg 10 10 40 40 re f\n"
+            b"0 0.5 0.5 0.1 k 60 10 40 40 re f\n"
+        ),
+    )
+
+    report = inspect_pdf(pdf)
+
+    assert any(
+        f["code"] == "mixed_rgb_cmyk_page"
+        for f in report["findings"]
+    )
+    usage = report["pages"][0]["color_usage"]
+    assert usage["rgb"]["vector"] == 1
+    assert usage["cmyk"]["vector"] == 1
+
+
+def test_iccbased_rgb_usage_reports_profiled_rgb(tmp_path: Path) -> None:
+    pdf = tmp_path / "icc-rgb.pdf"
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=300, height=300)
+    page.trimbox = RectangleObject([18, 18, 282, 282])
+    page.bleedbox = RectangleObject([9, 9, 291, 291])
+
+    profile = DecodedStreamObject()
+    profile.set_data(b"synthetic-icc-placeholder")
+    profile[NameObject("/N")] = NumberObject(3)
+    profile_ref = writer._add_object(profile)
+
+    resources = DictionaryObject(
+        {
+            NameObject("/ColorSpace"): DictionaryObject(
+                {
+                    NameObject("/CS1"): ArrayObject(
+                        [NameObject("/ICCBased"), profile_ref]
+                    )
+                }
+            )
+        }
+    )
+    page[NameObject("/Resources")] = resources
+
+    content = DecodedStreamObject()
+    content.set_data(b"/CS1 cs 0.1 0.2 0.3 scn 10 10 40 40 re f\n")
+    page[NameObject("/Contents")] = writer._add_object(content)
+
+    with pdf.open("wb") as fh:
+        writer.write(fh)
+
+    report = inspect_pdf(pdf)
+
+    usage = report["pages"][0]["color_usage"]
+    assert usage["rgb"]["vector"] == 1
+    assert usage["rgb"]["spaces"] == ["ICCBased RGB"]
+    finding = next(
+        f
+        for f in report["findings"]
+        if f["code"] == "rgb_vector_content_detected"
+    )
+    assert "ICCBased RGB" in finding["message"]

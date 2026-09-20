@@ -17,7 +17,7 @@ The project is maintained by a print/prepress professional with long hands-on ex
 - TrimBox dimensions per page
 - Inconsistent page sizes
 - Fonts that do not appear to be embedded
-- RGB color spaces in page resources
+- Used RGB content identified by type (raster image, vector artwork, or text), including mixed RGB/CMYK page warnings
 - Raster images below a configurable effective-resolution threshold (default: 350 dpi)
 - Spot-color names found in PDF color-space resources
 - PDF/X-related document metadata when present
@@ -119,6 +119,8 @@ pack-preflight artwork.pdf --min-image-dpi 300
 ```
 
 The image check uses effective resolution based on the embedded pixel dimensions and placed size in the PDF, rather than relying on nominal image metadata alone.
+
+RGB diagnostics inspect painted content rather than merely warning because an RGB color space exists somewhere in the resource dictionary. Findings distinguish raster images, vector artwork, and text where the PDF content stream makes that distinction available. DeviceRGB, CalRGB, and ICCBased RGB are recognized, and pages that actually use both RGB and CMYK are called out for separation review. These warnings do not predict a RIP's final conversion or claim that RGB content will necessarily print incorrectly.
 
 Get JSON output:
 
