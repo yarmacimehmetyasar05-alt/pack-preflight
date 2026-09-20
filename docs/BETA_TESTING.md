@@ -36,7 +36,8 @@ Useful beta cases include:
 - PDFs with and without bleed
 - Different TrimBox / BleedBox setups
 - Embedded and non-embedded fonts
-- RGB content in otherwise print-oriented files
+- Used RGB raster images, vector artwork, or text in otherwise print-oriented files
+- Pages that mix RGB and CMYK content, especially where your trusted RIP/preflight tool gives a different separation result
 - Raster images whose effective placed resolution falls below 350 dpi
 - Spot colors
 - PDF/X metadata and OutputIntent variations
