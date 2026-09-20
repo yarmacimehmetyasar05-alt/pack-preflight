@@ -38,6 +38,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum expected bleed on each side (default: 3.0 mm)",
     )
     parser.add_argument(
+        "--min-image-dpi",
+        type=float,
+        default=350.0,
+        help="Minimum effective raster image resolution (default: 350 dpi)",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Output machine-readable JSON",
@@ -154,7 +160,11 @@ def run(argv: list[str] | None = None) -> int:
         parser.error("no PDF files found in the supplied inputs")
 
     reports = [
-        inspect_pdf(path, min_bleed_mm=args.min_bleed_mm)
+        inspect_pdf(
+            path,
+            min_bleed_mm=args.min_bleed_mm,
+            min_image_dpi=args.min_image_dpi,
+        )
         for path in pdf_paths
     ]
 

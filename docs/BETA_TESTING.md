@@ -37,6 +37,7 @@ Useful beta cases include:
 - Different TrimBox / BleedBox setups
 - Embedded and non-embedded fonts
 - RGB content in otherwise print-oriented files
+- Raster images whose effective placed resolution falls below 350 dpi
 - Spot colors
 - PDF/X metadata and OutputIntent variations
 - Multi-page PDFs with inconsistent page sizes

@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+from math import hypot
 from pathlib import Path
 from typing import Any
 
 from pypdf import PdfReader
-from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject, NameObject
+from pypdf.generic import (
+    ArrayObject,
+    ContentStream,
+    DictionaryObject,
+    IndirectObject,
+    NameObject,
+)
 
 
 MM_PER_PT = 25.4 / 72.0
@@ -154,7 +161,146 @@ def _spot_colors_from_colorspace(obj: Any, found: set[str], seen: set[int]) -> N
             _spot_colors_from_colorspace(value, found, seen)
 
 
-def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
+Matrix = tuple[float, float, float, float, float, float]
+IDENTITY_MATRIX: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
+
+
+def _concat_matrix(current: Matrix, new: Matrix) -> Matrix:
+    a1, b1, c1, d1, e1, f1 = current
+    a2, b2, c2, d2, e2, f2 = new
+    return (
+        a1 * a2 + c1 * b2,
+        b1 * a2 + d1 * b2,
+        a1 * c2 + c1 * d2,
+        b1 * c2 + d1 * d2,
+        a1 * e2 + c1 * f2 + e1,
+        b1 * e2 + d1 * f2 + f1,
+    )
+
+
+def _matrix_from_operands(operands: Any) -> Matrix | None:
+    try:
+        values = tuple(float(value) for value in operands)
+    except (TypeError, ValueError):
+        return None
+    if len(values) != 6:
+        return None
+    return values  # type: ignore[return-value]
+
+
+def _scan_image_placements(
+    stream_obj: Any,
+    resources_obj: Any,
+    reader: PdfReader,
+    page_number: int,
+    min_image_dpi: float,
+    findings: list[Finding],
+    *,
+    ctm: Matrix = IDENTITY_MATRIX,
+    user_unit: float = 1.0,
+    active_forms: set[int] | None = None,
+    depth: int = 0,
+) -> None:
+    if stream_obj is None or depth > 8:
+        return
+
+    resources = _resolve(resources_obj)
+    if not isinstance(resources, DictionaryObject):
+        return
+
+    try:
+        content = ContentStream(stream_obj, reader)
+    except Exception:
+        return
+
+    active_forms = set() if active_forms is None else active_forms
+    current = ctm
+    stack: list[Matrix] = []
+
+    for operands, operator in content.operations:
+        if operator == b"q":
+            stack.append(current)
+            continue
+        if operator == b"Q":
+            if stack:
+                current = stack.pop()
+            continue
+        if operator == b"cm":
+            matrix = _matrix_from_operands(operands)
+            if matrix is not None:
+                current = _concat_matrix(current, matrix)
+            continue
+        if operator != b"Do" or not operands:
+            continue
+
+        xobjects = _resolve(resources.get("/XObject"))
+        if not isinstance(xobjects, DictionaryObject):
+            continue
+
+        xobj = _resolve(xobjects.get(operands[0]))
+        if not isinstance(xobj, DictionaryObject):
+            continue
+
+        subtype = str(xobj.get("/Subtype", ""))
+        if subtype == "/Image":
+            try:
+                width_px = float(xobj.get("/Width"))
+                height_px = float(xobj.get("/Height"))
+            except (TypeError, ValueError):
+                continue
+
+            placed_width_pt = hypot(current[0], current[1]) * user_unit
+            placed_height_pt = hypot(current[2], current[3]) * user_unit
+            if placed_width_pt <= 0 or placed_height_pt <= 0:
+                continue
+
+            dpi_x = width_px * 72.0 / placed_width_pt
+            dpi_y = height_px * 72.0 / placed_height_pt
+            effective_dpi = min(dpi_x, dpi_y)
+            if effective_dpi + 1e-6 < min_image_dpi:
+                findings.append(
+                    Finding(
+                        "image_effective_dpi_below_threshold",
+                        "warning",
+                        (
+                            f"Image {operands[0]} effective resolution is "
+                            f"{dpi_x:.1f} x {dpi_y:.1f} dpi; "
+                            f"minimum is {min_image_dpi:.1f} dpi."
+                        ),
+                        page_number,
+                    )
+                )
+            continue
+
+        if subtype == "/Form":
+            identity = id(xobj)
+            if identity in active_forms:
+                continue
+            form_matrix = _matrix_from_operands(
+                _resolve(xobj.get("/Matrix")) or IDENTITY_MATRIX
+            ) or IDENTITY_MATRIX
+            form_resources = xobj.get("/Resources") or resources
+            active_forms.add(identity)
+            _scan_image_placements(
+                xobj,
+                form_resources,
+                reader,
+                page_number,
+                min_image_dpi,
+                findings,
+                ctm=_concat_matrix(current, form_matrix),
+                user_unit=user_unit,
+                active_forms=active_forms,
+                depth=depth + 1,
+            )
+            active_forms.remove(identity)
+
+
+def inspect_pdf(
+    path: str | Path,
+    min_bleed_mm: float = 3.0,
+    min_image_dpi: float = 350.0,
+) -> dict[str, Any]:
     pdf_path = Path(path)
     findings: list[Finding] = []
     spot_colors: set[str] = set()
@@ -275,6 +421,15 @@ def inspect_pdf(path: str | Path, min_bleed_mm: float = 3.0) -> dict[str, Any]:
             )
 
         resources = _resolve(page.get("/Resources"))
+        _scan_image_placements(
+            page.get_contents(),
+            resources,
+            reader,
+            index,
+            min_image_dpi,
+            findings,
+            user_unit=float(page.get("/UserUnit", 1.0)),
+        )
         if isinstance(resources, DictionaryObject):
             if _resource_has_rgb(resources, set()):
                 findings.append(
