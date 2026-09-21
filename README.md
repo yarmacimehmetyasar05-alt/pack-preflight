@@ -31,12 +31,12 @@ The project is maintained by a print/prepress professional with long hands-on ex
 
 ## Download the beta
 
-The current public prerelease is **v0.1.0-beta.4**.
+The current public prerelease is **v0.1.0-beta.5**.
 
-- macOS: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.4/pack-preflight-macos.zip
-- Windows: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.4/pack-preflight-windows.zip
-- Linux: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.4/pack-preflight-linux.zip
-- Release notes: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.4
+- macOS: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.5/pack-preflight-macos.zip
+- Windows: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.5/pack-preflight-windows.zip
+- Linux: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/download/v0.1.0-beta.5/pack-preflight-linux.zip
+- Release notes: https://github.com/yarmacimehmetyasar05-alt/pack-preflight/releases/tag/v0.1.0-beta.5
 
 The standalone executables are currently unsigned and not notarized.
 
