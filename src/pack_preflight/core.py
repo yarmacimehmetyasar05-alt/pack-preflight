@@ -384,6 +384,301 @@ def _add_rgb_findings(
         )
 
 
+
+def _new_black_text_usage() -> dict[str, dict[tuple[Any, ...], int]]:
+    return {"k_only": {}, "composite": {}}
+
+
+def _cmyk_from_operands(operands: Any) -> tuple[float, float, float, float] | None:
+    if len(operands) < 4:
+        return None
+    try:
+        values = tuple(float(value) for value in operands[:4])
+    except (TypeError, ValueError):
+        return None
+    return values  # type: ignore[return-value]
+
+
+def _is_black_dominant_cmyk(c: float, m: float, y: float, k: float) -> bool:
+    # Focus this rule on text where black is the dominant process component.
+    # This avoids treating arbitrary dark process colors as "black text".
+    return k >= 0.5 and k + 1e-6 >= max(c, m, y)
+
+
+def _record_black_text(
+    usage: dict[str, dict[tuple[Any, ...], int]],
+    cmyk: tuple[float, float, float, float] | None,
+    font_size: float | None,
+    paint: str,
+) -> None:
+    if cmyk is None:
+        return
+    c, m, y, k = cmyk
+    if not _is_black_dominant_cmyk(c, m, y, k):
+        return
+
+    composite = any(component > 0.01 for component in (c, m, y))
+    category = "composite" if composite else "k_only"
+    key = (
+        round(c, 4),
+        round(m, 4),
+        round(y, 4),
+        round(k, 4),
+        round(font_size, 2) if font_size is not None else None,
+        paint,
+    )
+    usage[category][key] = usage[category].get(key, 0) + 1
+
+
+def _scan_black_text_usage(
+    stream_obj: Any,
+    resources_obj: Any,
+    reader: PdfReader,
+    usage: dict[str, dict[tuple[Any, ...], int]],
+    *,
+    inherited_nonstroke_space: tuple[str, str] = ("gray", "DeviceGray"),
+    inherited_stroke_space: tuple[str, str] = ("gray", "DeviceGray"),
+    inherited_nonstroke_cmyk: tuple[float, float, float, float] | None = None,
+    inherited_stroke_cmyk: tuple[float, float, float, float] | None = None,
+    inherited_text_render_mode: int = 0,
+    inherited_font_size: float | None = None,
+    active_forms: set[int] | None = None,
+    depth: int = 0,
+) -> None:
+    if stream_obj is None or depth > 8:
+        return
+
+    resources = _resolve(resources_obj)
+    if not isinstance(resources, DictionaryObject):
+        resources = DictionaryObject()
+
+    try:
+        content = ContentStream(stream_obj, reader)
+    except Exception:
+        return
+
+    active_forms = set() if active_forms is None else active_forms
+    nonstroke_space = inherited_nonstroke_space
+    stroke_space = inherited_stroke_space
+    nonstroke_cmyk = inherited_nonstroke_cmyk
+    stroke_cmyk = inherited_stroke_cmyk
+    text_render_mode = inherited_text_render_mode
+    font_size = inherited_font_size
+    state_stack: list[
+        tuple[
+            tuple[str, str],
+            tuple[str, str],
+            tuple[float, float, float, float] | None,
+            tuple[float, float, float, float] | None,
+            int,
+            float | None,
+        ]
+    ] = []
+    text_show_ops = {b"Tj", b"TJ", b"'", b'"'}
+
+    for operands, operator in content.operations:
+        if operator == b"q":
+            state_stack.append(
+                (
+                    nonstroke_space,
+                    stroke_space,
+                    nonstroke_cmyk,
+                    stroke_cmyk,
+                    text_render_mode,
+                    font_size,
+                )
+            )
+            continue
+        if operator == b"Q":
+            if state_stack:
+                (
+                    nonstroke_space,
+                    stroke_space,
+                    nonstroke_cmyk,
+                    stroke_cmyk,
+                    text_render_mode,
+                    font_size,
+                ) = state_stack.pop()
+            continue
+
+        if operator == b"k":
+            nonstroke_space = ("cmyk", "DeviceCMYK")
+            nonstroke_cmyk = _cmyk_from_operands(operands)
+            continue
+        if operator == b"K":
+            stroke_space = ("cmyk", "DeviceCMYK")
+            stroke_cmyk = _cmyk_from_operands(operands)
+            continue
+        if operator in {b"rg", b"g"}:
+            nonstroke_space = (
+                ("rgb", "DeviceRGB") if operator == b"rg" else ("gray", "DeviceGray")
+            )
+            nonstroke_cmyk = None
+            continue
+        if operator in {b"RG", b"G"}:
+            stroke_space = (
+                ("rgb", "DeviceRGB") if operator == b"RG" else ("gray", "DeviceGray")
+            )
+            stroke_cmyk = None
+            continue
+        if operator == b"cs" and operands:
+            nonstroke_space = _resolved_named_colorspace(operands[0], resources)
+            nonstroke_cmyk = None
+            continue
+        if operator == b"CS" and operands:
+            stroke_space = _resolved_named_colorspace(operands[0], resources)
+            stroke_cmyk = None
+            continue
+        if operator in {b"sc", b"scn"} and nonstroke_space[0] == "cmyk":
+            nonstroke_cmyk = _cmyk_from_operands(operands)
+            continue
+        if operator in {b"SC", b"SCN"} and stroke_space[0] == "cmyk":
+            stroke_cmyk = _cmyk_from_operands(operands)
+            continue
+        if operator == b"Tr" and operands:
+            try:
+                text_render_mode = int(operands[0])
+            except (TypeError, ValueError):
+                pass
+            continue
+        if operator == b"Tf" and len(operands) >= 2:
+            try:
+                font_size = abs(float(operands[1]))
+            except (TypeError, ValueError):
+                font_size = None
+            continue
+
+        if operator in text_show_ops:
+            if text_render_mode in {0, 2, 4, 6}:
+                _record_black_text(usage, nonstroke_cmyk, font_size, "fill")
+            if text_render_mode in {1, 2, 5, 6}:
+                _record_black_text(usage, stroke_cmyk, font_size, "stroke")
+            continue
+
+        if operator != b"Do" or not operands:
+            continue
+
+        xobjects = _resolve(resources.get("/XObject"))
+        if not isinstance(xobjects, DictionaryObject):
+            continue
+        xobj = _resolve(xobjects.get(operands[0]))
+        if not isinstance(xobj, DictionaryObject):
+            continue
+        if str(xobj.get("/Subtype", "")) != "/Form":
+            continue
+
+        identity = id(xobj)
+        if identity in active_forms:
+            continue
+        form_resources = _resolve(xobj.get("/Resources")) or resources
+        active_forms.add(identity)
+        _scan_black_text_usage(
+            xobj,
+            form_resources,
+            reader,
+            usage,
+            inherited_nonstroke_space=nonstroke_space,
+            inherited_stroke_space=stroke_space,
+            inherited_nonstroke_cmyk=nonstroke_cmyk,
+            inherited_stroke_cmyk=stroke_cmyk,
+            inherited_text_render_mode=text_render_mode,
+            inherited_font_size=font_size,
+            active_forms=active_forms,
+            depth=depth + 1,
+        )
+        active_forms.remove(identity)
+
+
+def _black_text_usage_for_output(
+    usage: dict[str, dict[tuple[Any, ...], int]]
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for category in ("k_only", "composite"):
+        entries = []
+        total = 0
+        for key, count in sorted(
+            usage[category].items(),
+            key=lambda item: (
+                item[0][4] is None,
+                item[0][4] if item[0][4] is not None else 0,
+                item[0],
+            ),
+        ):
+            c, m, y, k, font_size, paint = key
+            total += count
+            entries.append(
+                {
+                    "count": count,
+                    "paint": paint,
+                    "font_size_pt": font_size,
+                    "cmyk_percent": [
+                        round(c * 100, 1),
+                        round(m * 100, 1),
+                        round(y * 100, 1),
+                        round(k * 100, 1),
+                    ],
+                }
+            )
+        result[category] = {"occurrences": total, "constructions": entries}
+    return result
+
+
+def _add_rich_black_text_findings(
+    findings: list[Finding],
+    usage: dict[str, dict[tuple[Any, ...], int]],
+    page_number: int,
+    *,
+    small_text_pt: float = 12.0,
+) -> None:
+    for key, count in sorted(
+        usage["composite"].items(),
+        key=lambda item: (
+            item[0][4] is None,
+            item[0][4] if item[0][4] is not None else 0,
+            item[0],
+        ),
+    ):
+        c, m, y, k, font_size, paint = key
+        recipe = (
+            f"C{c * 100:.0f} M{m * 100:.0f} "
+            f"Y{y * 100:.0f} K{k * 100:.0f}"
+        )
+        size_text = (
+            f"{font_size:.2f} pt declared text size"
+            if font_size is not None
+            else "declared text size unavailable"
+        )
+        occurrence_text = f"{count} paint occurrence(s), {paint}"
+
+        if font_size is not None and font_size > small_text_pt:
+            findings.append(
+                Finding(
+                    "rich_black_display_text",
+                    "info",
+                    (
+                        f"Composite/rich-black text detected ({recipe}; {size_text}; "
+                        f"{occurrence_text}). Large display text may intentionally use "
+                        "a controlled rich-black construction; review against job intent."
+                    ),
+                    page_number,
+                )
+            )
+        else:
+            findings.append(
+                Finding(
+                    "rich_black_small_text",
+                    "warning",
+                    (
+                        f"Composite/rich-black text detected ({recipe}; {size_text}; "
+                        f"{occurrence_text}). Multi-channel black at small or unknown "
+                        "text sizes is more sensitive to register variation; review "
+                        "the separations before production."
+                    ),
+                    page_number,
+                )
+            )
+
+
 def _font_is_embedded(font_obj: Any) -> bool:
     font = _resolve(font_obj)
     if not isinstance(font, DictionaryObject):
@@ -715,6 +1010,20 @@ def inspect_pdf(
             color_usage,
             index,
             has_output_intent=bool(output_intents),
+        )
+
+        black_text_usage = _new_black_text_usage()
+        _scan_black_text_usage(
+            page.get_contents(),
+            resources,
+            reader,
+            black_text_usage,
+        )
+        page_summary["black_text"] = _black_text_usage_for_output(black_text_usage)
+        _add_rich_black_text_findings(
+            findings,
+            black_text_usage,
+            index,
         )
 
         if isinstance(resources, DictionaryObject):

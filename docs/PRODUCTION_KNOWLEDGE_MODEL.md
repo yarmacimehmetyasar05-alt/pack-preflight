@@ -73,6 +73,23 @@ Each production rule or investigation should be described with the following bac
 - **Evidence provenance:** maintainer field experience plus external technical validation where available.
 - **Implementation status:** tracked in the relevant GitHub issue.
 
+## Example: composite/rich-black text
+
+- **Production problem:** small black text is built from multiple process colors, increasing sensitivity to plate/register variation.
+- **Origin stage:** artwork/prepress.
+- **PDF / job evidence:** painted text uses a CMYK construction in which K is dominant but one or more C/M/Y components are also present.
+- **Trigger conditions:** the construction becomes more production-sensitive as declared text size gets smaller. The current diagnostic uses 12 pt as a conservative prominence boundary, not as a universal printing law.
+- **Press mechanism:** multiple process plates must fit accurately on the same glyph; small type makes visible color fringes or loss of crispness more likely when register varies.
+- **Finishing consequence:** normally none directly; the defect is primarily a printed-image/readability issue.
+- **Valid exceptions:** large display text or large headlines may intentionally use a controlled rich-black recipe such as C40 K100.
+- **Detection method:** inspect text painting operations, text rendering mode, declared font size, and resolvable CMYK operands.
+- **Confidence:** confirmed PDF construction; production severity remains workflow-dependent.
+- **Operator message:** report page, CMYK recipe, declared text size, paint mode, and occurrence count.
+- **Suggested action:** review separations and job intent rather than automatically rewriting the text.
+- **Regression tests:** K-only small text; C40 K100 small text; C40 K100 large display text.
+- **Evidence provenance:** maintainer field experience translated into a conservative diagnostic rule.
+- **Implementation status:** implemented in source; public binary availability depends on the current release.
+
 ## Design principle
 
 A PDF construction should not be labelled wrong merely because it differs from a default rule. The project should connect **file evidence -> production mechanism -> possible downstream consequence**, while preserving legitimate production choices and surfacing uncertainty to the operator.

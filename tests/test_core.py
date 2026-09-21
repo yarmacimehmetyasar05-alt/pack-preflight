@@ -398,3 +398,116 @@ def test_iccbased_rgb_usage_reports_profiled_rgb(tmp_path: Path) -> None:
         if f["code"] == "rgb_vector_content_detected"
     )
     assert "ICCBased RGB" in finding["message"]
+
+
+def _write_black_text_pdf(
+    path: Path,
+    *,
+    c: float,
+    m: float,
+    y: float,
+    k: float,
+    font_size: float,
+) -> None:
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type3"),
+        }
+    )
+    resources = DictionaryObject(
+        {
+            NameObject("/Font"): DictionaryObject(
+                {NameObject("/F1"): font}
+            )
+        }
+    )
+    content = (
+        f"{c} {m} {y} {k} k "
+        f"BT /F1 {font_size} Tf 10 10 Td (Black text) Tj ET\n"
+    ).encode("ascii")
+    _write_content_pdf(path, content, resources=resources)
+
+
+def test_k_only_black_text_is_classified_without_rich_black_warning(
+    tmp_path: Path,
+) -> None:
+    pdf = tmp_path / "k-only-black-text.pdf"
+    _write_black_text_pdf(
+        pdf,
+        c=0.0,
+        m=0.0,
+        y=0.0,
+        k=1.0,
+        font_size=8.0,
+    )
+
+    report = inspect_pdf(pdf)
+
+    black_text = report["pages"][0]["black_text"]
+    assert black_text["k_only"]["occurrences"] == 1
+    assert black_text["composite"]["occurrences"] == 0
+    assert black_text["k_only"]["constructions"][0]["cmyk_percent"] == [
+        0.0,
+        0.0,
+        0.0,
+        100.0,
+    ]
+    assert not any(
+        finding["code"].startswith("rich_black_")
+        for finding in report["findings"]
+    )
+
+
+def test_small_rich_black_text_is_a_register_risk_warning(tmp_path: Path) -> None:
+    pdf = tmp_path / "small-rich-black-text.pdf"
+    _write_black_text_pdf(
+        pdf,
+        c=0.4,
+        m=0.0,
+        y=0.0,
+        k=1.0,
+        font_size=8.0,
+    )
+
+    report = inspect_pdf(pdf)
+
+    black_text = report["pages"][0]["black_text"]
+    assert black_text["composite"]["occurrences"] == 1
+    finding = next(
+        finding
+        for finding in report["findings"]
+        if finding["code"] == "rich_black_small_text"
+    )
+    assert finding["severity"] == "warning"
+    assert finding["page"] == 1
+    assert "C40 M0 Y0 K100" in finding["message"]
+    assert "8.00 pt" in finding["message"]
+    assert "register variation" in finding["message"]
+
+
+def test_large_display_rich_black_text_is_informational(tmp_path: Path) -> None:
+    pdf = tmp_path / "display-rich-black-text.pdf"
+    _write_black_text_pdf(
+        pdf,
+        c=0.4,
+        m=0.0,
+        y=0.0,
+        k=1.0,
+        font_size=36.0,
+    )
+
+    report = inspect_pdf(pdf)
+
+    finding = next(
+        finding
+        for finding in report["findings"]
+        if finding["code"] == "rich_black_display_text"
+    )
+    assert finding["severity"] == "info"
+    assert "C40 M0 Y0 K100" in finding["message"]
+    assert "36.00 pt" in finding["message"]
+    assert not any(
+        finding["code"] == "rich_black_small_text"
+        for finding in report["findings"]
+    )
