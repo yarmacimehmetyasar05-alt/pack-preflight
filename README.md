@@ -158,6 +158,10 @@ The tool reports PDF/X-related metadata and OutputIntent information when it fin
 
 This project is currently a practical screening tool. It does **not** claim PDF/X, ISO, Ghent Workgroup, food-packaging, or regulatory compliance. A PASS only means that the PDF passed the rules implemented in the installed version.
 
+## Production knowledge model
+
+New rules are documented as a chain from the real production problem to the PDF/job evidence, press mechanism, finishing consequence, valid exceptions, detection method, operator action, tests, and evidence provenance. See [docs/PRODUCTION_KNOWLEDGE_MODEL.md](docs/PRODUCTION_KNOWLEDGE_MODEL.md).
+
 ## Contributing
 
 Real-world prepress edge cases are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
