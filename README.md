@@ -19,6 +19,7 @@ The project is maintained by a print/prepress professional with long hands-on ex
 - Fonts that do not appear to be embedded
 - Used RGB content identified by type (raster image, vector artwork, or text), including mixed RGB/CMYK page warnings
 - Raster images below a configurable effective-resolution threshold (default: 350 dpi)
+- Composite/rich-black text diagnostics with size-aware register-risk context (source/main; included in the next binary release)
 - Spot-color names found in PDF color-space resources
 - PDF/X-related document metadata when present
 - Catalog OutputIntent entries when present
