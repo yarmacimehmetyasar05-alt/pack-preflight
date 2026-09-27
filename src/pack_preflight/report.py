@@ -11,12 +11,35 @@ def _text(value: Any) -> str:
     return escape(str(value))
 
 
+def _text_list(values: Any) -> str:
+    if not values:
+        return "-"
+    return ", ".join(escape(str(value)) for value in values)
+
+
 def _finding_count(report: dict[str, Any], severity: str) -> int:
     return sum(
         1
         for finding in report.get("findings", [])
         if finding.get("severity") == severity
     )
+
+
+def _report_imposition_summary(report: dict[str, Any]) -> str:
+    labels: list[str] = []
+    for page in report.get("pages", []):
+        evidence = page.get("imposition_evidence") or {}
+        signatures = evidence.get("signature_ids") or []
+        sides = evidence.get("side_ids") or []
+        if not signatures and not sides:
+            continue
+        parts: list[str] = []
+        if signatures:
+            parts.append("sig=" + "/".join(str(value) for value in signatures))
+        if sides:
+            parts.append("side=" + "/".join(str(value) for value in sides))
+        labels.append(f"p{page.get('page', '?')} " + " ".join(parts))
+    return "; ".join(labels) if labels else "-"
 
 
 def render_html_report(report: dict[str, Any]) -> str:
@@ -36,6 +59,20 @@ def render_html_report(report: dict[str, Any]) -> str:
         f"<td>{'yes' if page.get('bleedbox_explicit') else 'no'}</td>"
         "</tr>"
         for page in pages
+    )
+
+    imposition_rows = "".join(
+        "<tr>"
+        f"<td>{page.get('page', '-')}</td>"
+        f"<td>{evidence.get('media_width_mm', 0):.2f} × {evidence.get('media_height_mm', 0):.2f}</td>"
+        f"<td>{_text(evidence.get('rotation'))}</td>"
+        f"<td>{_text_list(evidence.get('signature_ids'))}</td>"
+        f"<td>{_text_list(evidence.get('side_ids'))}</td>"
+        f"<td>{_text_list(evidence.get('slug_text'))}</td>"
+        f"<td>{_text(evidence.get('pairing_status'))}</td>"
+        "</tr>"
+        for page in pages
+        if (evidence := page.get("imposition_evidence"))
     )
 
     intent_rows = "".join(
@@ -61,6 +98,8 @@ def render_html_report(report: dict[str, Any]) -> str:
 
     if not page_rows:
         page_rows = '<tr><td colspan="5">No page data</td></tr>'
+    if not imposition_rows:
+        imposition_rows = '<tr><td colspan="7">No Phase 1 imposition evidence attached</td></tr>'
     if not intent_rows:
         intent_rows = '<tr><td colspan="5">No OutputIntent entries found</td></tr>'
     if not finding_rows:
@@ -114,6 +153,13 @@ th {{ background: #f2f2f2; }}
 {page_rows}
 </table>
 
+<h2>Imposition evidence — Phase 1</h2>
+<p class="small">Objective evidence only. Front/back pairing is not evaluated in this phase.</p>
+<table>
+<tr><th>Page</th><th>Media size (mm)</th><th>Rotate</th><th>Signature/Form ID</th><th>Side ID</th><th>Outside-Trim slug text</th><th>Pairing</th></tr>
+{imposition_rows}
+</table>
+
 <h2>Findings</h2>
 <table>
 <tr><th>Severity</th><th>Page</th><th>Code</th><th>Message</th></tr>
@@ -139,12 +185,13 @@ def render_html_batch_report(reports: list[dict[str, Any]]) -> str:
         f"<td>{_finding_count(report, 'warning')}</td>"
         f"<td>{_finding_count(report, 'info')}</td>"
         f"<td>{', '.join(escape(str(item)) for item in report.get('spot_colors', [])) or '-'}</td>"
+        f"<td>{escape(_report_imposition_summary(report))}</td>"
         "</tr>"
         for report in reports
     )
 
     if not rows:
-        rows = '<tr><td colspan="7">No reports</td></tr>'
+        rows = '<tr><td colspan="8">No reports</td></tr>'
 
     return f"""<!doctype html>
 <html lang="en">
@@ -184,6 +231,7 @@ th {{ background: #f2f2f2; }}
   <th>Warnings</th>
   <th>Info</th>
   <th>Spot colors</th>
+  <th>Imposition identity evidence</th>
 </tr>
 {rows}
 </table>
