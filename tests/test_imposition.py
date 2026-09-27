@@ -9,7 +9,10 @@ from pypdf.generic import (
     RectangleObject,
 )
 
-from pack_preflight.imposition import collect_page_imposition_evidence
+from pack_preflight.imposition import (
+    attach_imposition_evidence,
+    collect_page_imposition_evidence,
+)
 
 
 def _write_slug_pdf(
@@ -62,6 +65,24 @@ def _write_slug_pdf(
 def _evidence(path: Path) -> dict:
     reader = PdfReader(str(path))
     return collect_page_imposition_evidence(reader.pages[0])
+
+
+def _report_for(path: Path) -> dict:
+    return {
+        "file": str(path),
+        "ok": True,
+        "page_count": 1,
+        "pages": [
+            {
+                "page": 1,
+                "trim_width_mm": 105.83,
+                "trim_height_mm": 70.56,
+                "trimbox_explicit": True,
+                "bleedbox_explicit": True,
+            }
+        ],
+        "findings": [],
+    }
 
 
 def test_collects_physical_sheet_size_and_rotation(tmp_path: Path) -> None:
@@ -117,3 +138,45 @@ def test_missing_extractable_slug_is_not_a_pairing_mismatch(tmp_path: Path) -> N
     assert evidence["signature_ids"] == []
     assert evidence["side_ids"] == []
     assert evidence["pairing_status"] == "not_evaluated"
+
+
+def test_attach_adds_compact_evidence_without_copying_page_body_text(
+    tmp_path: Path,
+) -> None:
+    pdf = tmp_path / "sig3-front-report.pdf"
+    _write_slug_pdf(pdf, text="Job 721 - Sig 3 - FRONT")
+    report = _report_for(pdf)
+
+    attached = attach_imposition_evidence(pdf, report)
+    evidence = attached["pages"][0]["imposition_evidence"]
+
+    assert evidence["signature_ids"] == ["3"]
+    assert evidence["side_ids"] == ["front"]
+    assert evidence["slug_text"] == ["Job 721 - Sig 3 - FRONT"]
+    assert evidence["pairing_status"] == "not_evaluated"
+    assert "text_fragments" not in evidence
+
+
+def test_inside_artwork_text_is_not_copied_into_normal_report(tmp_path: Path) -> None:
+    pdf = tmp_path / "inside-private-text.pdf"
+    _write_slug_pdf(pdf, text="Customer body copy Sig 9 FRONT", x=100, y=100)
+    report = _report_for(pdf)
+
+    attached = attach_imposition_evidence(pdf, report)
+    evidence = attached["pages"][0]["imposition_evidence"]
+
+    assert evidence["extractable_text_present"] is True
+    assert evidence["slug_text"] == []
+    assert evidence["signature_ids"] == []
+    assert evidence["side_ids"] == []
+    assert "text_fragments" not in evidence
+
+
+def test_plain_english_on_does_not_mean_turkish_front(tmp_path: Path) -> None:
+    pdf = tmp_path / "job-on-press.pdf"
+    _write_slug_pdf(pdf, text="Job on press - Sig 2")
+
+    evidence = _evidence(pdf)
+
+    assert evidence["signature_ids"] == ["2"]
+    assert evidence["side_ids"] == []
