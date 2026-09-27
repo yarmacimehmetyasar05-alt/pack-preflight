@@ -20,6 +20,7 @@ The project is maintained by a print/prepress professional with long hands-on ex
 - Used RGB content identified by type (raster image, vector artwork, or text), including mixed RGB/CMYK page warnings
 - Raster images below a configurable effective-resolution threshold (default: 350 dpi)
 - Composite/rich-black text diagnostics with size-aware register-risk context (source/main; included in the next binary release)
+- Phase 1 imposed-sheet evidence reporting: physical sheet size, rotation, and extractable outside-TrimBox slug/signature/side identifiers (source/main; no automatic front/back pairing yet)
 - Spot-color names found in PDF color-space resources
 - PDF/X-related document metadata when present
 - Catalog OutputIntent entries when present
@@ -105,7 +106,9 @@ Create one self-contained HTML dashboard for a whole batch or folder:
 pack-preflight ./customer-job --recursive --html batch-report.html
 ```
 
-The batch dashboard summarizes file status, page counts, errors, warnings, info findings, and detected spot colors.
+The batch dashboard summarizes file status, page counts, errors, warnings, info findings, detected spot colors, and any Phase 1 imposition identity evidence found in outside-TrimBox text.
+
+Phase 1 imposition reporting records objective evidence only: physical MediaBox size, page rotation, and extractable slug text outside the TrimBox with normalized signature/form and front/back identifiers where available. It deliberately leaves pairing as `not_evaluated`; matching sheet size or similar layout alone is not treated as proof that two sides belong together.
 
 Set a custom bleed threshold:
 
