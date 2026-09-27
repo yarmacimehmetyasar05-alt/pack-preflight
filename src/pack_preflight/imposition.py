@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
+
+from pypdf import PdfReader
 
 
 MM_PER_PT = 25.4 / 72.0
@@ -14,12 +17,28 @@ _SIGNATURE_RE = re.compile(
 _SIDE_PATTERNS = (
     (re.compile(r"\bfront\b", re.IGNORECASE), "front"),
     (re.compile(r"\brecto\b", re.IGNORECASE), "front"),
-    (re.compile(r"\b(?:on|ön)\b", re.IGNORECASE), "front"),
+    (re.compile(r"\bön\b", re.IGNORECASE), "front"),
     (re.compile(r"\bback\b", re.IGNORECASE), "back"),
     (re.compile(r"\bverso\b", re.IGNORECASE), "back"),
     (re.compile(r"\barka\b", re.IGNORECASE), "back"),
 )
 _NUMBER_RE = re.compile(r"(?<![A-Za-z])\d{1,4}(?![A-Za-z])")
+
+_REPORT_EVIDENCE_KEYS = (
+    "media_width_mm",
+    "media_height_mm",
+    "trim_width_mm",
+    "trim_height_mm",
+    "rotation",
+    "user_unit",
+    "extractable_text_present",
+    "text_extraction_error",
+    "slug_text",
+    "signature_ids",
+    "side_ids",
+    "numeric_tokens",
+    "pairing_status",
+)
 
 
 def _box_points(box: Any) -> tuple[float, float, float, float]:
@@ -151,3 +170,47 @@ def collect_page_imposition_evidence(page: Any) -> dict[str, Any]:
         "text_fragments": all_text,
         "pairing_status": "not_evaluated",
     }
+
+
+def evidence_for_report(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Return the compact, privacy-conscious subset safe for normal reports.
+
+    Full inside-artwork text fragments are intentionally excluded. The report
+    keeps only raw text found outside the TrimBox plus normalized identity
+    evidence, which is enough for Phase 1 operator review without copying page
+    body text into JSON or HTML.
+    """
+    return {key: evidence.get(key) for key in _REPORT_EVIDENCE_KEYS}
+
+
+def attach_imposition_evidence(
+    path: str | Path,
+    report: dict[str, Any],
+) -> dict[str, Any]:
+    """Attach Phase 1 imposition evidence to existing page summaries.
+
+    This does not create findings and does not attempt front/back pairing. If a
+    PDF cannot be reopened here (for example an encrypted/unreadable file whose
+    report already has no pages), the original report is returned unchanged.
+    """
+    pages = report.get("pages", [])
+    if not pages:
+        return report
+
+    try:
+        reader = PdfReader(str(path))
+        if reader.is_encrypted:
+            try:
+                unlocked = reader.decrypt("")
+            except Exception:
+                unlocked = 0
+            if not unlocked:
+                return report
+    except Exception:
+        return report
+
+    for page_summary, page in zip(pages, reader.pages):
+        evidence = collect_page_imposition_evidence(page)
+        page_summary["imposition_evidence"] = evidence_for_report(evidence)
+
+    return report

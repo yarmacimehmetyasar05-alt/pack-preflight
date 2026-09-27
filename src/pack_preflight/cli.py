@@ -8,6 +8,7 @@ from typing import Any
 
 from . import __version__
 from .core import inspect_pdf
+from .imposition import attach_imposition_evidence
 from .report import write_html_batch_report, write_html_report
 
 
@@ -159,14 +160,14 @@ def run(argv: list[str] | None = None) -> int:
     if not pdf_paths:
         parser.error("no PDF files found in the supplied inputs")
 
-    reports = [
-        inspect_pdf(
+    reports: list[dict[str, Any]] = []
+    for path in pdf_paths:
+        report = inspect_pdf(
             path,
             min_bleed_mm=args.min_bleed_mm,
             min_image_dpi=args.min_image_dpi,
         )
-        for path in pdf_paths
-    ]
+        reports.append(attach_imposition_evidence(path, report))
 
     if args.html:
         if len(reports) == 1:

@@ -20,6 +20,21 @@ def _sample_report(file: str = "artwork.pdf", ok: bool = True) -> dict:
                 "trim_height_mm": 297.0,
                 "trimbox_explicit": True,
                 "bleedbox_explicit": True,
+                "imposition_evidence": {
+                    "media_width_mm": 230.0,
+                    "media_height_mm": 317.0,
+                    "trim_width_mm": 210.0,
+                    "trim_height_mm": 297.0,
+                    "rotation": 0,
+                    "user_unit": 1.0,
+                    "extractable_text_present": True,
+                    "text_extraction_error": None,
+                    "slug_text": ["Job 721 - Sig 3 - FRONT"],
+                    "signature_ids": ["3"],
+                    "side_ids": ["front"],
+                    "numeric_tokens": ["721", "3"],
+                    "pairing_status": "not_evaluated",
+                },
             }
         ],
         "pdfx": {"version": "PDF/X-4", "conformance": "PDF/X-4"},
@@ -56,6 +71,18 @@ def test_render_html_report_contains_key_sections_and_escapes_html() -> None:
     assert "Example <unsafe> message" not in html
 
 
+def test_render_html_report_shows_phase_one_imposition_evidence() -> None:
+    html = render_html_report(_sample_report())
+
+    assert "Imposition evidence — Phase 1" in html
+    assert "230.00 × 317.00" in html
+    assert "Job 721 - Sig 3 - FRONT" in html
+    assert ">3<" in html
+    assert ">front<" in html
+    assert "not_evaluated" in html
+    assert "Front/back pairing is not evaluated in this phase." in html
+
+
 def test_write_html_report(tmp_path: Path) -> None:
     output = tmp_path / "report.html"
     written = write_html_report(_sample_report(), output)
@@ -81,6 +108,8 @@ def test_render_html_batch_report_summarizes_files_and_escapes_names() -> None:
     assert "bad&lt;name&gt;.pdf" in html
     assert "bad<name>.pdf" not in html
     assert "CutContour" in html
+    assert "Imposition identity evidence" in html
+    assert "p1 sig=3 side=front" in html
 
 
 def test_write_html_batch_report(tmp_path: Path) -> None:
